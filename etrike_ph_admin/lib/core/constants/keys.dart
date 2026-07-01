@@ -1,0 +1,3 @@
+const String supabaseUrl = 'https://litrignthoxsdvsaheev.supabase.co';
+const String supabaseAnonKey =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxpdHJpZ250aG94c2R2c2FoZWV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNzAwODgsImV4cCI6MjA5Mzg0NjA4OH0.45hy5HXK26hzdFgNi7_LopUJV7awv5XxRQDF4HGnYl4';
