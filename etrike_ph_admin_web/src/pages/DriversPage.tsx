@@ -45,7 +45,7 @@ export function DriversPage() {
           placeholder="Search name, email, plate…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="rounded-xl border border-admin-border px-3 py-2 text-sm outline-none focus:border-admin-accent"
+          className="w-full rounded-xl border border-admin-border px-3 py-2 text-sm outline-none focus:border-admin-accent sm:w-64"
         />
       }
     >

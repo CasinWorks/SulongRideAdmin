@@ -65,8 +65,9 @@ export function OverviewPage() {
         </PanelCard>
 
         <PanelCard title="Driver status">
-          <div className="flex h-64 items-center gap-4">
-            <ResponsiveContainer width="50%" height="100%">
+          <div className="flex h-64 flex-col items-center gap-4 sm:flex-row">
+            <div className="h-full w-full min-h-[180px] sm:w-1/2">
+              <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80}>
                   {pieData.map((_, i) => (
@@ -75,7 +76,8 @@ export function OverviewPage() {
                 </Pie>
                 <Tooltip />
               </PieChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
+            </div>
             <ul className="space-y-2 text-sm">
               {pieData.map((d, i) => (
                 <li key={d.name} className="flex items-center gap-2">

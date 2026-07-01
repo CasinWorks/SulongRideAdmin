@@ -29,9 +29,9 @@ export function PanelCard({
 }) {
   return (
     <div className="rounded-2xl border border-admin-border bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-base font-semibold text-black/87">{title}</h3>
-        {action}
+        {action ? <div className="w-full sm:w-auto">{action}</div> : null}
       </div>
       {children}
     </div>
