@@ -4,13 +4,18 @@ export function StatCard({
   label,
   value,
   hint,
+  index = 0,
 }: {
   label: string
   value: string
   hint?: string
+  index?: number
 }) {
   return (
-    <div className="rounded-2xl border border-admin-border bg-white p-5 shadow-sm">
+    <div
+      className="admin-fade-up admin-card-hover rounded-2xl border border-admin-border bg-white p-5 shadow-sm"
+      style={{ animationDelay: `${Math.min(index, 6) * 55}ms` }}
+    >
       <p className="text-sm text-black/55">{label}</p>
       <p className="mt-1 text-2xl font-semibold text-black/87">{value}</p>
       {hint ? <p className="mt-1 text-xs text-black/45">{hint}</p> : null}
@@ -22,13 +27,18 @@ export function PanelCard({
   title,
   children,
   action,
+  index = 0,
 }: {
   title: string
   children: ReactNode
   action?: ReactNode
+  index?: number
 }) {
   return (
-    <div className="rounded-2xl border border-admin-border bg-white p-5 shadow-sm">
+    <div
+      className="admin-fade-up admin-card-hover rounded-2xl border border-admin-border bg-white p-5 shadow-sm"
+      style={{ animationDelay: `${Math.min(index, 6) * 55}ms` }}
+    >
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-base font-semibold text-black/87">{title}</h3>
         {action ? <div className="w-full sm:w-auto">{action}</div> : null}
@@ -70,7 +80,7 @@ export function PrimaryButton({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className="rounded-xl bg-admin-accent px-5 py-2.5 text-sm font-medium text-white transition hover:bg-admin-accent-light disabled:opacity-50"
+      className="rounded-xl bg-admin-accent px-5 py-2.5 text-sm font-medium text-white transition duration-200 hover:bg-admin-accent-light hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:hover:shadow-none disabled:active:scale-100"
     >
       {children}
     </button>
@@ -100,8 +110,11 @@ export function GhostButton({
 
 export function LoadingState({ label = 'Loading…' }: { label?: string }) {
   return (
-    <div className="flex min-h-[200px] items-center justify-center text-black/50">
-      {label}
+    <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 text-black/50">
+      <div className="h-1.5 w-28 overflow-hidden rounded-full bg-black/5">
+        <div className="admin-loading-shimmer h-full w-full rounded-full" />
+      </div>
+      <span className="text-sm">{label}</span>
     </div>
   )
 }

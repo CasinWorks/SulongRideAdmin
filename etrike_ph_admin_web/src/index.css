@@ -26,3 +26,101 @@ body {
 #root {
   min-height: 100vh;
 }
+
+@keyframes admin-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes admin-page-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes admin-birthday-soft {
+  0%,
+  100% {
+    box-shadow: 0 1px 2px rgb(46 125 50 / 0.06);
+  }
+  50% {
+    box-shadow: 0 4px 14px rgb(46 125 50 / 0.1);
+  }
+}
+
+@keyframes admin-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.admin-fade-up {
+  animation: admin-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.admin-page-enter {
+  animation: admin-page-in 0.35s ease-out both;
+}
+
+.admin-birthday-notice {
+  animation:
+    admin-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both,
+    admin-birthday-soft 2.8s ease-in-out 0.5s 1;
+}
+
+.admin-birthday-dot {
+  animation: admin-birthday-soft 2.8s ease-in-out infinite;
+}
+
+.admin-card-hover {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.admin-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.06);
+}
+
+.admin-nav-active {
+  transition: transform 0.2s ease;
+}
+
+.admin-loading-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(0 0 0 / 0.04) 0%,
+    rgb(0 0 0 / 0.07) 50%,
+    rgb(0 0 0 / 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: admin-shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-fade-up,
+  .admin-page-enter,
+  .admin-birthday-notice,
+  .admin-birthday-dot,
+  .admin-loading-shimmer {
+    animation: none !important;
+  }
+
+  .admin-card-hover:hover {
+    transform: none;
+  }
+}

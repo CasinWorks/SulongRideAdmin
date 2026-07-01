@@ -12,20 +12,30 @@ import {
   YAxis,
 } from 'recharts'
 import { fetchFleetOverview } from '../services/admin'
+import { fetchTodaysBirthdays } from '../lib/birthdays'
+import type { BirthdayPerson } from '../lib/birthdays'
 import type { FleetOverview } from '../types'
 import { formatPeso } from '../lib/format'
+import { BirthdayNotice } from '../components/ui/AdminMotion'
 import { ErrorState, LoadingState, PanelCard, StatCard } from '../components/ui/AdminUi'
 
 const PIE_COLORS = ['#2e7d32', '#94a3b8', '#f59e0b', '#ef4444']
 
 export function OverviewPage() {
   const [data, setData] = useState<FleetOverview | null>(null)
+  const [birthdays, setBirthdays] = useState<BirthdayPerson[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchFleetOverview()
-      .then(setData)
+    Promise.all([
+      fetchFleetOverview(),
+      fetchTodaysBirthdays().catch(() => [] as BirthdayPerson[]),
+    ])
+      .then(([overview, todayBirthdays]) => {
+        setData(overview)
+        setBirthdays(todayBirthdays)
+      })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load overview'))
       .finally(() => setLoading(false))
   }, [])
@@ -43,15 +53,16 @@ export function OverviewPage() {
 
   return (
     <div className="space-y-6">
+      <BirthdayNotice people={birthdays} />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Active drivers" value={String(data.activeDrivers)} />
-        <StatCard label="Pending approval" value={String(data.pendingApproval)} />
-        <StatCard label="Trips today" value={String(data.tripsToday)} hint={`Yesterday: ${data.tripsYesterday}`} />
-        <StatCard label="Fares today" value={formatPeso(data.faresToday)} hint={`Avg ${formatPeso(data.avgFareToday)}`} />
+        <StatCard label="Active drivers" value={String(data.activeDrivers)} index={0} />
+        <StatCard label="Pending approval" value={String(data.pendingApproval)} index={1} />
+        <StatCard label="Trips today" value={String(data.tripsToday)} hint={`Yesterday: ${data.tripsYesterday}`} index={2} />
+        <StatCard label="Fares today" value={formatPeso(data.faresToday)} hint={`Avg ${formatPeso(data.avgFareToday)}`} index={3} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <PanelCard title="Trips — last 7 days">
+        <PanelCard title="Trips — last 7 days" index={4}>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.tripsLast7Days}>
@@ -64,7 +75,7 @@ export function OverviewPage() {
           </div>
         </PanelCard>
 
-        <PanelCard title="Driver status">
+        <PanelCard title="Driver status" index={5}>
           <div className="flex h-64 flex-col items-center gap-4 sm:flex-row">
             <div className="h-full w-full min-h-[180px] sm:w-1/2">
               <ResponsiveContainer width="100%" height="100%">
@@ -94,7 +105,7 @@ export function OverviewPage() {
       </div>
 
       {data.flaggedItems.length > 0 ? (
-        <PanelCard title="Flagged items">
+        <PanelCard title="Flagged items" index={6}>
           <ul className="space-y-3">
             {data.flaggedItems.map((item, i) => (
               <li
@@ -124,7 +135,7 @@ export function OverviewPage() {
       ) : null}
 
       {data.topDriversThisWeek.length > 0 ? (
-        <PanelCard title="Top drivers this week">
+        <PanelCard title="Top drivers this week" index={7}>
           <ul className="divide-y divide-admin-border">
             {data.topDriversThisWeek.map((d) => (
               <li key={d.id} className="flex items-center justify-between py-3">

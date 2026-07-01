@@ -39,7 +39,7 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-admin-bg p-6">
-      <div className="w-full max-w-md rounded-2xl border border-admin-border bg-white p-8 shadow-sm">
+      <div className="admin-fade-up w-full max-w-md rounded-2xl border border-admin-border bg-white p-8 shadow-sm">
         <p className="text-xs font-medium uppercase tracking-wide text-admin-accent">
           Sulong Ride
         </p>

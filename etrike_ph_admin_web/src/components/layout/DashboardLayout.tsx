@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
+import { PageTransition } from '../ui/AdminMotion'
 
 const nav = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
@@ -55,9 +56,9 @@ function SidebarNav({
             end={end}
             onClick={onNavigate}
             className={({ isActive }) =>
-              `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+              `admin-nav-active flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${
                 isActive
-                  ? 'bg-admin-accent text-white'
+                  ? 'bg-admin-accent text-white shadow-sm'
                   : 'text-black/65 hover:bg-white hover:text-black/87'
               }`
             }
@@ -183,7 +184,9 @@ export function DashboardLayout() {
           </div>
         </header>
         <div className="flex-1 overflow-auto p-4 sm:p-6">
-          <Outlet />
+          <PageTransition key={location.pathname}>
+            <Outlet />
+          </PageTransition>
         </div>
       </main>
     </div>
