@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { operatorEmailDomain } from '../lib/operatorAuth'
+import { operatorEmailDomain, friendlyAuthError } from '../lib/operatorAuth'
 import { LoadingState, PrimaryButton } from '../components/ui/AdminUi'
 
 function GoogleMark() {
@@ -56,7 +56,8 @@ export function LoginPage() {
       await signIn(email.trim(), password)
       navigate('/')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign in failed')
+      const raw = err instanceof Error ? err.message : 'Sign in failed'
+      setError(friendlyAuthError(raw))
     } finally {
       setBusy(false)
     }
@@ -68,7 +69,8 @@ export function LoginPage() {
     try {
       await signInWithGoogle()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Google sign-in failed')
+      const raw = err instanceof Error ? err.message : 'Google sign-in failed'
+      setError(friendlyAuthError(raw))
       setBusy(false)
     }
   }

@@ -14,3 +14,13 @@ export function isEmailAllowedForOperator(email: string | undefined): boolean {
 export function oauthRedirectUrl(): string {
   return `${window.location.origin}/`
 }
+
+export function friendlyAuthError(message: string): string {
+  if (message.includes('missing OAuth secret')) {
+    return 'Google sign-in is not fully configured in Supabase. Open Authentication → Providers → Google and paste both the Client ID and Client Secret from Google Cloud Console, then Save.'
+  }
+  if (message.includes('validation_failed')) {
+    return 'Sign-in configuration error. Check Supabase Authentication → Providers → Google.'
+  }
+  return message
+}
