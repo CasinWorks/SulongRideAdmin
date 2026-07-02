@@ -1,4 +1,19 @@
 import { supabase } from '../lib/supabase'
+import {
+  DEFAULT_FARE,
+  mapDriver,
+  mapFareConfig,
+  mapFareSchedule,
+  mapOperator,
+  mapTrip,
+} from '../lib/adminMappers'
+import {
+  auditSummaryDriverApproval,
+  auditSummaryFareRates,
+  auditSummaryLeaveReview,
+  auditSummaryOperatorAction,
+  auditSummaryUpdatedFareSchedule,
+} from '../lib/auditSummary'
 import { driverDisplayName, sameDay, tripDay } from '../lib/format'
 import { throwSupabaseError } from '../lib/supabaseError'
 import type {
@@ -19,57 +34,20 @@ import type {
 } from '../types'
 import { fetchAuditLogsForDriver, logAudit } from './audit'
 
-function mapDriver(row: Record<string, unknown>): DriverRow {
-  return {
-    id: row.id as string,
-    full_name: (row.full_name as string) ?? '',
-    email: (row.email as string) ?? '',
-    phone: (row.phone as string) ?? null,
-    trike_plate_number: (row.trike_plate_number as string) ?? null,
-    trike_model: (row.trike_model as string) ?? null,
-    approval_status: (row.approval_status as string) ?? 'pending',
-    created_at: (row.created_at as string) ?? null,
-    is_online: (row.is_online as boolean) ?? false,
-    is_available: (row.is_available as boolean) ?? false,
-    employment_type: (row.employment_type as string) ?? 'contractual',
-    station: (row.station as string) ?? 'Carmona Central',
-    shift_schedule: (row.shift_schedule as string) ?? '—',
-    emergency_contact: (row.emergency_contact as string) ?? '',
-    start_date: (row.start_date as string) ?? null,
-  }
-}
-
-function mapTrip(row: Record<string, unknown>): TripRow {
-  const tags = row.complaint_tags
-  return {
-    id: row.id as string,
-    driver_id: (row.driver_id as string) ?? null,
-    pickup_address: (row.pickup_address as string) ?? '',
-    dropoff_address: (row.dropoff_address as string) ?? '',
-    fare: Number(row.fare ?? 0),
-    status: (row.status as string) ?? '',
-    created_at: row.created_at as string,
-    completed_at: (row.completed_at as string) ?? null,
-    rating: row.rating != null ? Number(row.rating) : null,
-    review_text: (row.review_text as string) ?? null,
-    complaint_tags: Array.isArray(tags) ? tags.map(String) : null,
-    review_acknowledged_at: (row.review_acknowledged_at as string) ?? null,
-  }
-}
-
-function mapOperator(row: Record<string, unknown>): OperatorRow {
-  return {
-    id: row.id as string,
-    email: (row.email as string) ?? '',
-    full_name: (row.full_name as string) ?? '',
-    approval_status: (row.approval_status as OperatorApprovalStatus) ?? 'pending',
-    role: (row.role as OperatorRole) ?? 'admin',
-    approved_by: (row.approved_by as string) ?? null,
-    approved_at: (row.approved_at as string) ?? null,
-    created_at: (row.created_at as string) ?? null,
-  }
-}
-
+const COMPLETED_TRIP_COLUMNS = [
+  'id',
+  'driver_id',
+  'pickup_address',
+  'dropoff_address',
+  'fare',
+  'status',
+  'created_at',
+  'completed_at',
+  'rating',
+  'review_text',
+  'complaint_tags',
+  'review_acknowledged_at',
+].join(', ')
 
 export async function fetchCurrentOperator(): Promise<OperatorRow | null> {
   const {
@@ -165,7 +143,11 @@ export async function setOperatorApproval(
     action: 'operator.approval',
     entityType: 'operators',
     entityId: operatorId,
-    summary: `Operator ${target?.email ?? operatorId} set to ${status}`,
+    summary: auditSummaryOperatorAction(
+      'Operator approval updated',
+      target?.email ?? operatorId,
+      status,
+    ),
     metadata: { status, email: target?.email },
   })
 }
@@ -184,7 +166,11 @@ export async function setOperatorRole(operatorId: string, role: OperatorRole): P
     action: 'operator.role',
     entityType: 'operators',
     entityId: operatorId,
-    summary: `Operator ${target?.email ?? operatorId} role set to ${role}`,
+    summary: auditSummaryOperatorAction(
+      'Operator role updated',
+      target?.email ?? operatorId,
+      role,
+    ),
     metadata: { role, email: target?.email },
   })
 }
@@ -234,17 +220,12 @@ export async function setDriverApproval(
     action: 'driver.approval',
     entityType: 'drivers',
     entityId: driverId,
-    summary: `Driver approval set to ${status}`,
+    summary: auditSummaryDriverApproval(status),
     metadata: { status },
   })
 }
 
-export const DEFAULT_FARE = {
-  baseFare: 40,
-  perKmRate: 0,
-  minimumFare: 40,
-  currency: 'PHP',
-} as const
+export { DEFAULT_FARE } from '../lib/adminMappers'
 
 function hardcodedDefaultEffectiveFare(): EffectiveFare {
   return {
@@ -258,36 +239,6 @@ function hardcodedDefaultEffectiveFare(): EffectiveFare {
     fare_source: 'default',
     schedule_id: null,
     schedule_label: null,
-  }
-}
-
-function mapFareConfig(row: Record<string, unknown>): FareConfig {
-  return {
-    id: row.id as string,
-    base_fare: Number(row.base_fare ?? DEFAULT_FARE.baseFare),
-    per_km_rate: Number(row.per_km_rate ?? DEFAULT_FARE.perKmRate),
-    minimum_fare: Number(row.minimum_fare ?? DEFAULT_FARE.minimumFare),
-    currency: (row.currency as string) ?? DEFAULT_FARE.currency,
-    is_active: (row.is_active as boolean) ?? true,
-    updated_at: (row.updated_at as string) ?? null,
-  }
-}
-
-function mapFareSchedule(row: Record<string, unknown>): FareSchedule {
-  return {
-    id: row.id as string,
-    label: (row.label as string) ?? '',
-    base_fare: Number(row.base_fare ?? 40),
-    per_km_rate: Number(row.per_km_rate ?? 0),
-    minimum_fare: Number(row.minimum_fare ?? 40),
-    currency: (row.currency as string) ?? 'PHP',
-    schedule_type: (row.schedule_type as FareScheduleType) ?? 'discount',
-    starts_at: row.starts_at as string,
-    ends_at: (row.ends_at as string) ?? null,
-    is_active: (row.is_active as boolean) ?? true,
-    created_by: (row.created_by as string) ?? null,
-    created_at: (row.created_at as string) ?? '',
-    updated_at: (row.updated_at as string) ?? '',
   }
 }
 
@@ -378,7 +329,7 @@ export async function createFareSchedule(params: {
     action: 'fare.schedule.create',
     entityType: 'fare_schedules',
     entityId: schedule.id,
-    summary: `Scheduled fare "${schedule.label}" — base ₱${schedule.base_fare} from ${schedule.starts_at}`,
+    summary: auditSummaryUpdatedFareSchedule(schedule.label),
     metadata: {
       schedule_type: schedule.schedule_type,
       base_fare: schedule.base_fare,
@@ -422,7 +373,7 @@ export async function updateFareSchedule(
     action: 'fare.schedule.update',
     entityType: 'fare_schedules',
     entityId: id,
-    summary: `Updated scheduled fare "${params.label}"`,
+    summary: auditSummaryUpdatedFareSchedule(params.label),
     metadata: params,
   })
 }
@@ -469,7 +420,11 @@ export async function initializeDefaultFare(params?: {
     action: 'fare.initialize',
     entityType: 'fare_config',
     entityId: config.id,
-    summary: `Default fare initialized — base ₱${config.base_fare}, per km ₱${config.per_km_rate}, min ₱${config.minimum_fare}`,
+    summary: auditSummaryFareRates('Default fare initialized', {
+      base: config.base_fare,
+      perKm: config.per_km_rate,
+      minimum: config.minimum_fare,
+    }),
     metadata: {
       base_fare: config.base_fare,
       per_km_rate: config.per_km_rate,
@@ -499,7 +454,11 @@ export async function updateActiveFare(params: {
     action: 'fare.update',
     entityType: 'fare_config',
     entityId: params.id,
-    summary: `Default fare updated — base ₱${params.baseFare}, per km ₱${params.perKmRate}, min ₱${params.minimumFare}`,
+    summary: auditSummaryFareRates('Default fare updated', {
+      base: params.baseFare,
+      perKm: params.perKmRate,
+      minimum: params.minimumFare,
+    }),
     metadata: {
       base_fare: params.baseFare,
       per_km_rate: params.perKmRate,
@@ -534,7 +493,7 @@ export async function reviewLeaveRequest(
     action: 'leave.review',
     entityType: 'leave_requests',
     entityId: id,
-    summary: `Leave request ${status}`,
+    summary: auditSummaryLeaveReview(status),
     metadata: { status },
   })
 }
@@ -552,14 +511,12 @@ export async function listAttendance(limit = 50): Promise<AttendanceRow[]> {
 async function fetchCompletedTrips(): Promise<TripRow[]> {
   const { data, error } = await supabase
     .from('trips')
-    .select(
-      'id, driver_id, pickup_address, dropoff_address, fare, status, created_at, completed_at, rating, review_text, complaint_tags, review_acknowledged_at',
-    )
+    .select(COMPLETED_TRIP_COLUMNS)
     .eq('status', 'completed')
     .order('created_at', { ascending: false })
 
   if (error) throw error
-  return (data ?? []).map((r) => mapTrip(r as Record<string, unknown>))
+  return (data ?? []).map((r) => mapTrip(r as unknown as Record<string, unknown>))
 }
 
 export async function acknowledgeTripReview(tripId: string): Promise<void> {

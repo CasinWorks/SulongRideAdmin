@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { listAttendance } from '../services/admin'
 import type { AttendanceRow } from '../types'
 import { driverDisplayName, formatDateTime } from '../lib/format'
-import { ErrorState, LoadingState, PanelCard } from '../components/ui/AdminUi'
+import { ErrorState, LoadingState, PanelCard } from '../components/ui/adminPageUi'
 
 export function AttendancePage() {
   const [rows, setRows] = useState<AttendanceRow[]>([])

@@ -17,7 +17,7 @@ import type { BirthdayPerson } from '../lib/birthdays'
 import type { FleetOverview } from '../types'
 import { formatPeso } from '../lib/format'
 import { BirthdayNotice } from '../components/ui/AdminMotion'
-import { ErrorState, LoadingState, PanelCard, StatCard } from '../components/ui/AdminUi'
+import { ErrorState, LoadingState, PanelCard, StatCard } from '../components/ui/adminPageUi'
 
 const PIE_COLORS = ['#2e7d32', '#94a3b8', '#f59e0b', '#ef4444']
 
@@ -57,8 +57,18 @@ export function OverviewPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Active drivers" value={String(data.activeDrivers)} index={0} />
         <StatCard label="Pending approval" value={String(data.pendingApproval)} index={1} />
-        <StatCard label="Trips today" value={String(data.tripsToday)} hint={`Yesterday: ${data.tripsYesterday}`} index={2} />
-        <StatCard label="Fares today" value={formatPeso(data.faresToday)} hint={`Avg ${formatPeso(data.avgFareToday)}`} index={3} />
+        <StatCard
+          label="Trips today"
+          value={String(data.tripsToday)}
+          hint={`Yesterday: ${data.tripsYesterday}`}
+          index={2}
+        />
+        <StatCard
+          label="Fares today"
+          value={formatPeso(data.faresToday)}
+          hint={`Avg ${formatPeso(data.avgFareToday)}`}
+          index={3}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

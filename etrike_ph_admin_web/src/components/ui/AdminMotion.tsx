@@ -45,7 +45,10 @@ export function BirthdayNotice({ people }: { people: BirthdayPerson[] }) {
 
   return (
     <div
-      className="admin-birthday-notice mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-admin-accent/25 bg-white px-4 py-3 text-sm text-black/70 shadow-sm"
+      className={[
+        'admin-birthday-notice mb-5 flex flex-wrap items-center gap-x-3 gap-y-1',
+        'rounded-xl border border-admin-accent/25 bg-white px-4 py-3 text-sm text-black/70 shadow-sm',
+      ].join(' ')}
       role="status"
     >
       <span className="admin-birthday-dot h-2 w-2 shrink-0 rounded-full bg-admin-accent" aria-hidden />

@@ -62,13 +62,15 @@ function SidebarNav({
             to={to}
             end={end}
             onClick={onNavigate}
-            className={({ isActive }) =>
-              `admin-nav-active flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${
-                isActive
-                  ? 'bg-admin-accent text-white shadow-sm'
-                  : 'text-black/65 hover:bg-white hover:text-black/87'
-              }`
-            }
+            className={({ isActive }) => {
+              const base = [
+                'admin-nav-active flex items-center gap-2.5 rounded-xl px-3 py-2.5',
+                'text-sm font-medium transition-colors duration-200',
+              ].join(' ')
+              return isActive
+                ? `${base} bg-admin-accent text-white shadow-sm`
+                : `${base} text-black/65 hover:bg-white hover:text-black/87`
+            }}
           >
             <Icon size={18} />
             {label}
@@ -78,7 +80,10 @@ function SidebarNav({
       <button
         type="button"
         onClick={onSignOut}
-        className="mt-4 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-black/55 hover:bg-white hover:text-black/80"
+        className={[
+          'mt-4 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-black/55',
+          'hover:bg-white hover:text-black/80',
+        ].join(' ')}
       >
         <LogOut size={18} />
         Sign out
@@ -113,9 +118,12 @@ function MobileDrawer({
         aria-hidden={!open}
       />
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[min(18rem,88vw)] flex-col border-r border-admin-border bg-admin-bg p-4 shadow-xl transition-transform duration-200 ease-out lg:hidden ${
-          open ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={[
+          'fixed inset-y-0 left-0 z-50 flex w-[min(18rem,88vw)] flex-col',
+          'border-r border-admin-border bg-admin-bg p-4 shadow-xl',
+          'transition-transform duration-200 ease-out lg:hidden',
+          open ? 'translate-x-0' : '-translate-x-full',
+        ].join(' ')}
         aria-hidden={!open}
       >
         <div className="mb-2 flex items-start justify-between gap-2">

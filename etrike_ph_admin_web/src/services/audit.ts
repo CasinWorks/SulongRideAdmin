@@ -1,17 +1,8 @@
 import { supabase } from '../lib/supabase'
 import { supabaseErrorMessage } from '../lib/supabaseError'
+import { auditActorRole, type AuditActorRole } from '../lib/auditActorRole'
+import { endOfDayIso, matchesAuditSearch } from '../lib/auditSearch'
 import type { AuditLogFilters, AuditLogRow } from '../types'
-
-type AuditActorRole = 'operator' | 'driver' | 'rider' | 'super_admin' | 'admin' | 'viewer'
-
-/** Map operators.role to audit_logs.actor_role (DB check constraint). */
-function auditActorRole(operatorRole: string | null | undefined): AuditActorRole {
-  if (operatorRole === 'super_admin' || operatorRole === 'admin' || operatorRole === 'viewer') {
-    return operatorRole
-  }
-  if (operatorRole === 'driver' || operatorRole === 'rider') return operatorRole
-  return 'operator'
-}
 
 export async function logAudit(params: {
   action: string
@@ -50,25 +41,6 @@ export async function logAudit(params: {
   }
 }
 
-function endOfDayIso(dateStr: string): string {
-  const d = new Date(`${dateStr}T23:59:59.999`)
-  return d.toISOString()
-}
-
-function matchesSearch(row: AuditLogRow, search: string): boolean {
-  const q = search.trim().toLowerCase()
-  if (!q) return true
-  const haystack = [
-    row.summary,
-    row.action,
-    row.actor_email ?? '',
-    row.entity_id ?? '',
-  ]
-    .join(' ')
-    .toLowerCase()
-  return haystack.includes(q)
-}
-
 export async function fetchAuditLogs(
   filtersOrLimit: AuditLogFilters | number = 100,
 ): Promise<AuditLogRow[]> {
@@ -97,7 +69,7 @@ export async function fetchAuditLogs(
 
   let rows = (data ?? []) as AuditLogRow[]
   if (filters.search?.trim()) {
-    rows = rows.filter((r) => matchesSearch(r, filters.search!))
+    rows = rows.filter((r) => matchesAuditSearch(r, filters.search!))
   }
   return rows
 }

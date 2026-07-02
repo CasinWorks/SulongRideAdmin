@@ -13,7 +13,7 @@ import { AttendancePage } from './pages/AttendancePage'
 import { AuditPage } from './pages/AuditPage'
 import { DriverDetailPage } from './pages/DriverDetailPage'
 import { UsersPage } from './pages/UsersPage'
-import { LoadingState } from './components/ui/AdminUi'
+import { LoadingState, ScreenLoader } from './components/ui/AdminUi'
 import { isSupabaseConfigured } from './lib/supabase'
 
 function ConfigError() {
@@ -36,11 +36,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     useAuth()
 
   if (loading || operatorLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-admin-bg">
-        <LoadingState />
-      </div>
-    )
+    return <ScreenLoader />
   }
 
   if (!session) return <Navigate to="/login" replace />

@@ -9,7 +9,7 @@ import {
   PanelCard,
   PrimaryButton,
   StatusPill,
-} from '../components/ui/AdminUi'
+} from '../components/ui/adminPageUi'
 
 const ROLES: OperatorRole[] = ['admin', 'viewer', 'super_admin']
 

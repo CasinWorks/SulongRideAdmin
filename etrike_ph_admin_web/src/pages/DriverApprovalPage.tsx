@@ -4,12 +4,14 @@ import { listDrivers, setDriverApproval } from '../services/admin'
 import type { DriverRow } from '../types'
 import { driverDisplayName, formatDate } from '../lib/format'
 import {
+  DividerList,
   ErrorState,
   GhostButton,
   LoadingState,
   PanelCard,
   PrimaryButton,
-} from '../components/ui/AdminUi'
+  ReviewListRow,
+} from '../components/ui/adminPageUi'
 
 type Props = {
   status: 'pending' | 'approved' | 'rejected'
@@ -64,39 +66,41 @@ export function DriverApprovalPage({
       {drivers.length === 0 ? (
         <p className="py-8 text-center text-black/45">No drivers in this list.</p>
       ) : (
-        <ul className="divide-y divide-admin-border">
+        <DividerList>
           {drivers.map((d) => (
-            <li key={d.id} className="flex flex-wrap items-center justify-between gap-4 py-4">
-              <div>
-                <Link to={`/drivers/${d.id}`} className="font-medium text-admin-accent hover:underline">
-                  {driverDisplayName(d)}
-                </Link>
-                <p className="text-sm text-black/55">{d.email}</p>
-                <p className="text-xs text-black/45">
-                  {d.trike_plate_number ?? 'No plate'} · {formatDate(d.created_at)}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {status !== 'approved' ? (
-                  <PrimaryButton
-                    disabled={busyId === d.id}
-                    onClick={() => void handleApproval(d.id, 'approved')}
-                  >
-                    {approveLabel}
-                  </PrimaryButton>
-                ) : null}
-                {status !== 'rejected' ? (
-                  <GhostButton
-                    disabled={busyId === d.id}
-                    onClick={() => void handleApproval(d.id, 'rejected')}
-                  >
-                    {rejectLabel}
-                  </GhostButton>
-                ) : null}
-              </div>
-            </li>
+            <ReviewListRow
+              key={d.id}
+              actions={
+                <>
+                  {status !== 'approved' ? (
+                    <PrimaryButton
+                      disabled={busyId === d.id}
+                      onClick={() => void handleApproval(d.id, 'approved')}
+                    >
+                      {approveLabel}
+                    </PrimaryButton>
+                  ) : null}
+                  {status !== 'rejected' ? (
+                    <GhostButton
+                      disabled={busyId === d.id}
+                      onClick={() => void handleApproval(d.id, 'rejected')}
+                    >
+                      {rejectLabel}
+                    </GhostButton>
+                  ) : null}
+                </>
+              }
+            >
+              <Link to={`/drivers/${d.id}`} className="font-medium text-admin-accent hover:underline">
+                {driverDisplayName(d)}
+              </Link>
+              <p className="text-sm text-black/55">{d.email}</p>
+              <p className="text-xs text-black/45">
+                {d.trike_plate_number ?? 'No plate'} · {formatDate(d.created_at)}
+              </p>
+            </ReviewListRow>
           ))}
-        </ul>
+        </DividerList>
       )}
     </PanelCard>
   )

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { fetchWeeklyTripsByDriver, listDrivers } from '../services/admin'
 import type { DriverRow } from '../types'
 import { driverDisplayName, formatDate } from '../lib/format'
-import { ErrorState, LoadingState, PanelCard, StatusPill } from '../components/ui/AdminUi'
+import { ErrorState, LoadingState, PanelCard, StatusPill, adminSearchInputCls } from '../components/ui/adminPageUi'
 
 export function DriversPage() {
   const [drivers, setDrivers] = useState<DriverRow[]>([])
@@ -45,7 +45,7 @@ export function DriversPage() {
           placeholder="Search name, email, plate…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full rounded-xl border border-admin-border px-3 py-2 text-sm outline-none focus:border-admin-accent sm:w-64"
+          className={adminSearchInputCls}
         />
       }
     >

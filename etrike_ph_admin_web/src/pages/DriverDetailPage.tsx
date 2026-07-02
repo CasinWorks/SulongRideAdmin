@@ -14,7 +14,7 @@ import {
   PrimaryButton,
   StatCard,
   StatusPill,
-} from '../components/ui/AdminUi'
+} from '../components/ui/adminPageUi'
 import type { DriverProfile } from '../types'
 
 export function DriverDetailPage() {

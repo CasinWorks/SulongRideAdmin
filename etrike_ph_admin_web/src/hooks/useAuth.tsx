@@ -3,7 +3,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useMemo,
   useState,
   type ReactNode,
 } from 'react'
@@ -116,39 +115,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setOperator(null)
   }, [])
 
-  const value = useMemo(
-    () => ({
-      session,
-      user: session?.user ?? null,
-      loading,
-      isOperator: isOp,
-      operatorLoading,
-      operator,
-      operatorStatus,
-      operatorRole,
-      isSuperAdmin,
-      emailAllowed,
-      signIn,
-      signInWithGoogle,
-      signOut,
-      refreshOperator,
-    }),
-    [
-      session,
-      loading,
-      isOp,
-      operatorLoading,
-      operator,
-      operatorStatus,
-      operatorRole,
-      isSuperAdmin,
-      emailAllowed,
-      signIn,
-      signInWithGoogle,
-      signOut,
-      refreshOperator,
-    ],
-  )
+  const value: AuthState = {
+    session,
+    user: session?.user ?? null,
+    loading,
+    isOperator: isOp,
+    operatorLoading,
+    operator,
+    operatorStatus,
+    operatorRole,
+    isSuperAdmin,
+    emailAllowed,
+    signIn,
+    signInWithGoogle,
+    signOut,
+    refreshOperator,
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
