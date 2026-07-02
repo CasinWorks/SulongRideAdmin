@@ -39,8 +39,14 @@ describe('isEmailAllowedForOperator', () => {
 })
 
 describe('oauthRedirectUrl', () => {
-  it('uses current origin', () => {
+  it('uses current origin with default path', () => {
     expect(oauthRedirectUrl()).toBe(`${window.location.origin}/`)
+  })
+
+  it('supports custom return paths', () => {
+    expect(oauthRedirectUrl('/invite/abc123')).toBe(
+      `${window.location.origin}/invite/abc123`,
+    )
   })
 })
 

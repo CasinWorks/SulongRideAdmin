@@ -144,10 +144,11 @@ export function LoadingState({ label = 'Loading…' }: { label?: string }) {
   )
 }
 
-export function ScreenLoader() {
+export function ScreenLoader({ label }: { label?: string }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-admin-bg">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-admin-bg">
       <LoadingState />
+      {label ? <p className="text-sm text-black/45">{label}</p> : null}
     </div>
   )
 }

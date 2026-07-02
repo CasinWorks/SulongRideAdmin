@@ -2,7 +2,11 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { DashboardLayout } from './components/layout/DashboardLayout'
 import { LoginPage } from './pages/LoginPage'
-import { NotAllowedEmailPage } from './pages/NotOperatorPage'
+import {
+  DriverAccountPage,
+  NotAllowedEmailPage,
+  NotInvitedPage,
+} from './pages/NotOperatorPage'
 import { PendingAccessPage } from './pages/PendingAccessPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { DriversPage } from './pages/DriversPage'
@@ -13,6 +17,7 @@ import { AttendancePage } from './pages/AttendancePage'
 import { AuditPage } from './pages/AuditPage'
 import { DriverDetailPage } from './pages/DriverDetailPage'
 import { UsersPage } from './pages/UsersPage'
+import { InviteAcceptPage } from './pages/InviteAcceptPage'
 import { LoadingState, ScreenLoader } from './components/ui/AdminUi'
 import { isSupabaseConfigured } from './lib/supabase'
 
@@ -32,8 +37,16 @@ function ConfigError() {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading, isOperator, operatorLoading, emailAllowed, operatorStatus } =
-    useAuth()
+  const {
+    session,
+    loading,
+    isOperator,
+    isDriverAccount,
+    operatorLoading,
+    emailAllowed,
+    operatorStatus,
+    operator,
+  } = useAuth()
 
   if (loading || operatorLoading) {
     return <ScreenLoader />
@@ -41,19 +54,21 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!session) return <Navigate to="/login" replace />
   if (!emailAllowed) return <NotAllowedEmailPage />
+  if (isDriverAccount) return <DriverAccountPage />
+  if (!operator) return <NotInvitedPage />
   if (operatorStatus === 'revoked') return <PendingAccessPage variant="revoked" />
-  if (operatorStatus === 'pending' || operatorStatus === 'none') {
+  if (operatorStatus === 'pending') {
     return <PendingAccessPage variant="pending" />
   }
-  if (!isOperator) return <PendingAccessPage variant="pending" />
+  if (!isOperator) return <NotInvitedPage />
   return <>{children}</>
 }
 
-function SuperAdminRoute({ children }: { children: React.ReactNode }) {
-  const { isSuperAdmin, operatorLoading } = useAuth()
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAdmin, operatorLoading } = useAuth()
 
   if (operatorLoading) return <LoadingState />
-  if (!isSuperAdmin) return <Navigate to="/" replace />
+  if (!isAdmin) return <Navigate to="/" replace />
   return <>{children}</>
 }
 
@@ -61,6 +76,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/invite/:token" element={<InviteAcceptPage />} />
       <Route
         element={
           <ProtectedRoute>
@@ -110,9 +126,9 @@ function AppRoutes() {
         <Route
           path="team"
           element={
-            <SuperAdminRoute>
+            <AdminRoute>
               <UsersPage />
-            </SuperAdminRoute>
+            </AdminRoute>
           }
         />
       </Route>

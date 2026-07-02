@@ -20,8 +20,8 @@ export function PendingAccessPage({ variant = 'pending' }: Props) {
     variant === 'revoked'
       ? 'Your admin access has been revoked. Please reach out to the super admin if you believe this is a mistake.'
       : [
-          'Please reach out to the admin for access.',
-          'Your account must be approved before you can use the operator dashboard.',
+          'You have been invited but not approved yet.',
+          'A super admin must approve your operator account before you can use the dashboard.',
         ].join(' ')
 
   return (

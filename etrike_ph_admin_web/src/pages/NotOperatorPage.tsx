@@ -16,7 +16,7 @@ export function NotAllowedEmailPage() {
           <strong>@{domain}</strong> accounts.
         </p>
         <p className="mt-4 text-sm text-black/55">
-          Sign out and use an approved operator Gmail, or ask your admin to update access.
+          Sign out and use an invited operator Gmail, or ask your admin to update access.
         </p>
         <div className="mt-6 flex justify-center">
           <GhostButton onClick={() => void signOut()}>Sign out</GhostButton>
@@ -26,39 +26,54 @@ export function NotAllowedEmailPage() {
   )
 }
 
-export function NotOperatorPage() {
-  const { user, signOut, refreshOperator } = useAuth()
+/** Shown when a driver-app account tries to use the operator dashboard. */
+export function DriverAccountPage() {
+  const { user, signOut } = useAuth()
   const email = user?.email ?? 'unknown'
-  const uid = user?.id ?? '—'
-  const provider = (user?.app_metadata?.provider as string | undefined) ?? 'email'
-
-  const sql = `insert into public.operators (id, email, full_name)
-select id, email, coalesce(raw_user_meta_data->>'full_name', 'Operator')
-from auth.users
-where email = '${email}'
-on conflict (id) do update
-  set email = excluded.email;`
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-admin-bg p-6">
       <div className="w-full max-w-lg rounded-2xl border border-admin-border bg-white p-8 text-center shadow-sm">
-        <h1 className="text-xl font-semibold">This account is not an operator</h1>
+        <h1 className="text-xl font-semibold">Driver account not allowed</h1>
         <p className="mt-3 text-sm text-black/55">
-          Signed in as <strong>{email}</strong>
-          {provider === 'google' ? ' (Google)' : ''}
-          <br />
-          User ID: <code className="text-xs">{uid}</code>
+          Signed in as <strong>{email}</strong>. This login is registered as a{' '}
+          <strong>driver</strong> in the fleet app.
         </p>
         <p className="mt-4 text-sm text-black/55">
-          {provider === 'google'
-            ? 'After your first Google sign-in, an admin must add you to operators in Supabase, then tap Retry.'
-            : 'In Supabase → SQL Editor, run the insert below, then tap Retry.'}
+          The operator dashboard is invite-only. Use the driver mobile app, or ask a super admin
+          to invite a separate operator account (different email) for admin access.
         </p>
-        <pre className="mt-4 overflow-x-auto rounded-xl bg-admin-bg p-4 text-left text-xs text-admin-accent">
-          {sql}
-        </pre>
+        <div className="mt-6 flex justify-center">
+          <GhostButton onClick={() => void signOut()}>Sign out</GhostButton>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Shown when the user is not invited (no row in operators). */
+export function NotInvitedPage() {
+  const { user, signOut, refreshOperator } = useAuth()
+  const email = user?.email ?? 'unknown'
+  const provider = (user?.app_metadata?.provider as string | undefined) ?? 'email'
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-admin-bg p-6">
+      <div className="w-full max-w-lg rounded-2xl border border-admin-border bg-white p-8 text-center shadow-sm">
+        <h1 className="text-xl font-semibold">Not invited</h1>
+        <p className="mt-3 text-sm text-black/55">
+          Signed in as <strong>{email}</strong>
+          {provider === 'google' ? ' (Google)' : ''}.
+        </p>
+        <p className="mt-4 text-sm text-black/55">
+          Admin access is invite-only. Ask an admin to send you an invite link, open it, and sign
+          in with the invited email.
+        </p>
+        <p className="mt-3 text-sm text-black/45">
+          After you are invited, sign in again or tap Check again below.
+        </p>
         <div className="mt-6 flex justify-center gap-3">
-          <PrimaryButton onClick={() => void refreshOperator()}>Retry</PrimaryButton>
+          <PrimaryButton onClick={() => void refreshOperator()}>Check again</PrimaryButton>
           <GhostButton onClick={() => void signOut()}>Sign out</GhostButton>
         </div>
       </div>

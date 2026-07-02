@@ -12,6 +12,29 @@ export type OperatorRow = {
   created_at: string | null
 }
 
+export type OperatorInviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
+
+export type OperatorInviteRow = {
+  id: string
+  token: string
+  email: string
+  role: OperatorRole
+  status: OperatorInviteStatus
+  invited_by: string | null
+  created_at: string
+  expires_at: string
+  accepted_at: string | null
+  accepted_by: string | null
+}
+
+export type OperatorInvitePreview = {
+  email: string
+  role: OperatorRole
+  status: OperatorInviteStatus
+  expires_at: string
+  accepted_at: string | null
+}
+
 export type DriverRow = {
   id: string
   full_name: string

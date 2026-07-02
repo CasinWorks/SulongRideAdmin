@@ -11,8 +11,9 @@ export function isEmailAllowedForOperator(email: string | undefined): boolean {
 }
 
 /** Where Supabase sends the browser after Google OAuth completes. */
-export function oauthRedirectUrl(): string {
-  return `${window.location.origin}/`
+export function oauthRedirectUrl(returnPath = '/'): string {
+  const path = returnPath.startsWith('/') ? returnPath : `/${returnPath}`
+  return `${window.location.origin}${path}`
 }
 
 export function friendlyAuthError(message: string): string {

@@ -65,39 +65,21 @@ export async function fetchCurrentOperator(): Promise<OperatorRow | null> {
   return data ? mapOperator(data as Record<string, unknown>) : null
 }
 
-export async function ensurePendingOperator(): Promise<OperatorRow | null> {
+/** True when this auth user has a row in drivers (driver app account). */
+export async function isDriverAccount(): Promise<boolean> {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const existing = await fetchCurrentOperator()
-  if (existing) return existing
-
-  const fullName =
-    (user.user_metadata?.full_name as string | undefined) ??
-    (user.user_metadata?.name as string | undefined) ??
-    'Operator'
+  if (!user) return false
 
   const { data, error } = await supabase
-    .from('operators')
-    .insert({
-      id: user.id,
-      email: user.email ?? '',
-      full_name: fullName,
-      approval_status: 'pending',
-      role: 'admin',
-    })
-    .select('*')
+    .from('drivers')
+    .select('id')
+    .eq('id', user.id)
     .maybeSingle()
 
-  if (error) {
-    const retry = await fetchCurrentOperator()
-    if (retry) return retry
-    throw error
-  }
-
-  return data ? mapOperator(data as Record<string, unknown>) : null
+  if (error) return false
+  return data != null
 }
 
 export async function isOperator(): Promise<boolean> {

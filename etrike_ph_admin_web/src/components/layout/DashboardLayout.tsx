@@ -144,12 +144,12 @@ function MobileDrawer({
 }
 
 export function DashboardLayout() {
-  const { signOut, isSuperAdmin } = useAuth()
+  const { signOut, isAdmin } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [navOpen, setNavOpen] = useState(false)
 
-  const nav: NavItem[] = isSuperAdmin ? [...baseNav, teamNav] : baseNav
+  const nav: NavItem[] = isAdmin ? [...baseNav, teamNav] : baseNav
 
   const currentPage =
     nav.find((item) =>

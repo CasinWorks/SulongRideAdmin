@@ -61,8 +61,8 @@ export function LoginPage() {
         </p>
         <h1 className="mt-1 text-2xl font-semibold">Operator sign in</h1>
         <p className="mt-2 text-sm text-black/55">
-          Sign in with Google or email. Your account must have a row in{' '}
-          <code className="rounded bg-admin-bg px-1">operators</code>.
+          Invite-only: use the link from your admin invite, or sign in after an admin sends you
+          one. Driver app accounts cannot use this dashboard.
           {allowedDomain ? (
             <>
               {' '}
@@ -119,8 +119,7 @@ export function LoginPage() {
         </form>
 
         <p className="mt-5 text-center text-xs text-black/40">
-          First time with Google? Ask an admin to add your Gmail to{' '}
-          <code className="rounded bg-admin-bg px-1">operators</code> in Supabase.
+          Need access? Ask an admin to send you an invite link.
         </p>
       </div>
     </div>
