@@ -65,7 +65,6 @@ export function AuditPage() {
         dateTo,
         limit: 500,
       }
-      if (search.trim()) filters.search = search.trim()
       if (action) filters.action = action
       if (appSource) filters.appSource = appSource
       if (actorRole) filters.actorRole = actorRole
@@ -76,11 +75,22 @@ export function AuditPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, dateFrom, dateTo, action, appSource, actorRole])
+  }, [dateFrom, dateTo, action, appSource, actorRole])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return rows
+    return rows.filter((r) => {
+      const haystack = [r.summary, r.action, r.actor_email ?? '', r.entity_id ?? '']
+        .join(' ')
+        .toLowerCase()
+      return haystack.includes(q)
+    })
+  }, [rows, search])
 
   const actionOptions = useMemo(() => {
     const set = new Set(rows.map((r) => r.action))
@@ -183,13 +193,13 @@ export function AuditPage() {
       {error ? <ErrorState message={error} /> : null}
 
       {!loading && !error ? (
-        rows.length === 0 ? (
+        filteredRows.length === 0 ? (
           <p className="py-8 text-center text-black/45">
             No logs match your filters. Run fix_audit_logs.sql if the table is missing.
           </p>
         ) : (
           <>
-            <p className="mb-3 text-xs text-black/45">{rows.length} log(s)</p>
+            <p className="mb-3 text-xs text-black/45">{filteredRows.length} log(s)</p>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] text-left text-sm">
                 <thead>
@@ -203,7 +213,7 @@ export function AuditPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r) => (
+                  {filteredRows.map((r) => (
                     <tr key={r.id} className="border-b border-admin-border/70">
                       <td className="py-3 pr-4 whitespace-nowrap">
                         {formatDateTime(r.created_at)}
