@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import {
   createFareSchedule,
   deactivateFareSchedule,
@@ -43,17 +43,22 @@ function statusBadge(status: ScheduleStatus): string {
   }
 }
 
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+function defaultDatetimeLocal(date = new Date()): string {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+}
+
 function toDatetimeLocal(iso: string | null): string {
   if (!iso) return ''
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return defaultDatetimeLocal(new Date(iso))
 }
 
 function parseDatetimeLocal(value: string): Date | null {
   const trimmed = value.trim()
   if (!trimmed) return null
-  const [datePart, timePart] = trimmed.split('T')
+  const normalized = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T')
+  const [datePart, timePart] = normalized.split('T')
   if (!datePart || !timePart) return null
   const [year, month, day] = datePart.split('-').map(Number)
   const [hour, minute] = timePart.split(':').map(Number)
@@ -62,17 +67,45 @@ function parseDatetimeLocal(value: string): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-function newScheduleForm() {
+type ScheduleFormState = {
+  label: string
+  scheduleType: FareScheduleType
+  base: string
+  perKm: string
+  minimum: string
+  startsAt: string
+  indefinite: boolean
+  endsAt: string
+}
+
+function newScheduleForm(): ScheduleFormState {
   return {
     label: '',
-    scheduleType: 'discount' as FareScheduleType,
+    scheduleType: 'discount',
     base: '40',
     perKm: '0',
     minimum: '40',
-    startsAt: toDatetimeLocal(new Date().toISOString()),
+    startsAt: defaultDatetimeLocal(),
     indefinite: true,
     endsAt: '',
   }
+}
+
+function readScheduleForm(formEl: HTMLFormElement) {
+  const label = (formEl.elements.namedItem('schedule-label') as HTMLInputElement).value
+  const scheduleType = (formEl.elements.namedItem('schedule-type') as HTMLSelectElement)
+    .value as FareScheduleType
+  const base = (formEl.elements.namedItem('schedule-base') as HTMLInputElement).value
+  const perKm = (formEl.elements.namedItem('schedule-perKm') as HTMLInputElement).value
+  const minimum = (formEl.elements.namedItem('schedule-minimum') as HTMLInputElement).value
+  const startsAt = (formEl.elements.namedItem('schedule-startsAt') as HTMLInputElement).value
+  const indefinite = (formEl.elements.namedItem('schedule-indefinite') as HTMLInputElement)
+    .checked
+  const endsAt = indefinite
+    ? ''
+    : (formEl.elements.namedItem('schedule-endsAt') as HTMLInputElement).value
+
+  return { label, scheduleType, base, perKm, minimum, startsAt, indefinite, endsAt }
 }
 
 export function FarePage() {
@@ -83,7 +116,8 @@ export function FarePage() {
   const [base, setBase] = useState('')
   const [perKm, setPerKm] = useState('')
   const [minimum, setMinimum] = useState('')
-  const [form, setForm] = useState(newScheduleForm)
+  const [form, setForm] = useState<ScheduleFormState>(() => newScheduleForm())
+  const [scheduleFormKey, setScheduleFormKey] = useState(0)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -159,9 +193,14 @@ export function FarePage() {
     }
   }
 
+  function resetScheduleForm(next?: ScheduleFormState) {
+    setForm(next ?? newScheduleForm())
+    setScheduleFormKey((k) => k + 1)
+  }
+
   function startEdit(s: FareSchedule) {
     setEditingId(s.id)
-    setForm({
+    resetScheduleForm({
       label: s.label,
       scheduleType: s.schedule_type,
       base: String(s.base_fare),
@@ -177,33 +216,44 @@ export function FarePage() {
 
   function cancelEdit() {
     setEditingId(null)
-    setForm(newScheduleForm())
+    resetScheduleForm()
+    setScheduleError(null)
+    setScheduleMessage(null)
   }
 
-  async function handleSaveSchedule() {
+  async function handleSaveSchedule(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
     setScheduleError(null)
     setScheduleMessage(null)
 
-    if (!form.label.trim()) {
+    const fields = readScheduleForm(e.currentTarget)
+    setForm(fields)
+
+    const label = fields.label.trim()
+    if (!label) {
       setScheduleError('Label is required')
       return
     }
 
-    const startDate = parseDatetimeLocal(form.startsAt)
+    const startDate = parseDatetimeLocal(fields.startsAt)
     if (!startDate) {
-      setScheduleError('Start date and time are required')
+      setScheduleError(
+        fields.startsAt.trim()
+          ? 'Start date and time are invalid — pick a date/time from the picker'
+          : 'Start date and time are required',
+      )
       return
     }
 
     let endIso: string | null = null
-    if (!form.indefinite) {
-      if (!form.endsAt.trim()) {
+    if (!fields.indefinite) {
+      if (!fields.endsAt.trim()) {
         setScheduleError('End date and time are required unless the schedule is indefinite')
         return
       }
-      const endDate = parseDatetimeLocal(form.endsAt)
+      const endDate = parseDatetimeLocal(fields.endsAt)
       if (!endDate) {
-        setScheduleError('End date and time are invalid')
+        setScheduleError('End date and time are invalid — pick a date/time from the picker')
         return
       }
       if (endDate.getTime() <= startDate.getTime()) {
@@ -216,11 +266,11 @@ export function FarePage() {
     setScheduleSaving(true)
     try {
       const payload = {
-        label: form.label.trim(),
-        scheduleType: form.scheduleType,
-        baseFare: Number(form.base),
-        perKmRate: Number(form.perKm),
-        minimumFare: Number(form.minimum),
+        label,
+        scheduleType: fields.scheduleType,
+        baseFare: Number(fields.base),
+        perKmRate: Number(fields.perKm),
+        minimumFare: Number(fields.minimum),
         startsAt: startDate.toISOString(),
         endsAt: endIso,
       }
@@ -233,8 +283,8 @@ export function FarePage() {
       }
       cancelEdit()
       await refresh()
-    } catch (e) {
-      setScheduleError(supabaseErrorMessage(e, 'Schedule save failed'))
+    } catch (err) {
+      setScheduleError(supabaseErrorMessage(err, 'Schedule save failed'))
     } finally {
       setScheduleSaving(false)
     }
@@ -401,7 +451,11 @@ export function FarePage() {
           </div>
         )}
 
-        <div className="rounded-xl border border-admin-border bg-admin-bg/40 p-4">
+        <form
+          key={scheduleFormKey}
+          className="rounded-xl border border-admin-border bg-admin-bg/40 p-4"
+          onSubmit={(e) => void handleSaveSchedule(e)}
+        >
           <h4 className="mb-3 text-sm font-semibold text-black/80">
             {editingId ? 'Edit schedule' : 'New schedule'}
           </h4>
@@ -410,15 +464,18 @@ export function FarePage() {
               <span className="text-sm font-medium">Label</span>
               <input
                 type="text"
+                name="schedule-label"
                 value={form.label}
                 onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
                 placeholder="e.g. Holiday promo"
                 className={inputCls}
+                required
               />
             </label>
             <label className="block">
               <span className="text-sm font-medium">Type</span>
               <select
+                name="schedule-type"
                 value={form.scheduleType}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, scheduleType: e.target.value as FareScheduleType }))
@@ -433,15 +490,18 @@ export function FarePage() {
               <span className="text-sm font-medium">Starts</span>
               <input
                 type="datetime-local"
+                name="schedule-startsAt"
                 value={form.startsAt}
                 onChange={(e) => setForm((f) => ({ ...f, startsAt: e.target.value }))}
                 className={inputCls}
+                required
               />
             </label>
             <label className="block">
               <span className="text-sm font-medium">Base fare (₱)</span>
               <input
                 type="number"
+                name="schedule-base"
                 value={form.base}
                 onChange={(e) => setForm((f) => ({ ...f, base: e.target.value }))}
                 className={inputCls}
@@ -451,6 +511,7 @@ export function FarePage() {
               <span className="text-sm font-medium">Per km (₱)</span>
               <input
                 type="number"
+                name="schedule-perKm"
                 value={form.perKm}
                 onChange={(e) => setForm((f) => ({ ...f, perKm: e.target.value }))}
                 className={inputCls}
@@ -460,6 +521,7 @@ export function FarePage() {
               <span className="text-sm font-medium">Minimum fare (₱)</span>
               <input
                 type="number"
+                name="schedule-minimum"
                 value={form.minimum}
                 onChange={(e) => setForm((f) => ({ ...f, minimum: e.target.value }))}
                 className={inputCls}
@@ -469,6 +531,7 @@ export function FarePage() {
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
+                  name="schedule-indefinite"
                   checked={form.indefinite}
                   onChange={(e) => setForm((f) => ({ ...f, indefinite: e.target.checked }))}
                 />
@@ -479,6 +542,7 @@ export function FarePage() {
                   <span className="text-sm font-medium">Ends</span>
                   <input
                     type="datetime-local"
+                    name="schedule-endsAt"
                     value={form.endsAt}
                     onChange={(e) => setForm((f) => ({ ...f, endsAt: e.target.value }))}
                     className={inputCls}
@@ -488,7 +552,7 @@ export function FarePage() {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <PrimaryButton disabled={scheduleSaving} onClick={() => void handleSaveSchedule()}>
+            <PrimaryButton type="submit" disabled={scheduleSaving}>
               {scheduleSaving ? 'Saving…' : editingId ? 'Update schedule' : 'Add schedule'}
             </PrimaryButton>
             {editingId ? <GhostButton onClick={cancelEdit}>Cancel</GhostButton> : null}
@@ -497,7 +561,7 @@ export function FarePage() {
             <p className="mt-4 text-sm text-green-700">{scheduleMessage}</p>
           ) : null}
           {scheduleError ? <p className="mt-4 text-sm text-red-700">{scheduleError}</p> : null}
-        </div>
+        </form>
       </PanelCard>
     </div>
   )
