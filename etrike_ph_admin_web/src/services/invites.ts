@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { throwSupabaseError } from '../lib/supabaseError'
 import { logAudit } from './audit'
 import type { OperatorInvitePreview, OperatorInviteRow, OperatorRole } from '../types'
 
@@ -101,7 +102,7 @@ export async function fetchOperatorInviteByToken(
     p_token: token,
   })
 
-  if (error) throw error
+  if (error) throwSupabaseError(error, 'Could not load invite')
   const row = Array.isArray(data) ? data[0] : data
   if (!row) return null
 

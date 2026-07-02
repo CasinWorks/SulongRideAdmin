@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { operatorEmailDomain, friendlyAuthError } from '../lib/operatorAuth'
+import { supabaseErrorMessage } from '../lib/supabaseError'
 import { GoogleMark } from '../components/GoogleMark'
 import {
   adminInputCls,
@@ -66,7 +67,7 @@ export function InviteAcceptPage() {
         }
       })
       .catch((e) => {
-        setInviteError(e instanceof Error ? e.message : 'Could not load invite')
+        setInviteError(supabaseErrorMessage(e, 'Could not load invite'))
       })
       .finally(() => setInviteLoading(false))
   }, [token])
