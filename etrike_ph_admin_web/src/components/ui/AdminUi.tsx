@@ -49,17 +49,20 @@ export function PanelCard({
 }
 
 export function StatusPill({ status }: { status: string }) {
+  const normalized = status.replace('_', ' ')
   const cls =
     status === 'approved'
       ? 'bg-green-100 text-green-800'
       : status === 'pending'
         ? 'bg-amber-100 text-amber-800'
-        : status === 'rejected'
+        : status === 'rejected' || status === 'revoked'
           ? 'bg-red-100 text-red-800'
-          : 'bg-gray-100 text-gray-700'
+          : status === 'super_admin'
+            ? 'bg-violet-100 text-violet-800'
+            : 'bg-gray-100 text-gray-700'
   return (
     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${cls}`}>
-      {status}
+      {normalized}
     </span>
   )
 }

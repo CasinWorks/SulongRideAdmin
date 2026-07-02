@@ -13,11 +13,12 @@ import {
   LogOut,
   Menu,
   X,
+  Shield,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { PageTransition } from '../ui/AdminMotion'
 
-const nav = [
+const baseNav = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/drivers', label: 'Drivers', icon: Users },
   { to: '/pending', label: 'Pending', icon: Clock },
@@ -28,6 +29,10 @@ const nav = [
   { to: '/fare', label: 'Fare', icon: Banknote },
   { to: '/audit', label: 'Audit logs', icon: ScrollText },
 ]
+
+const teamNav = { to: '/team', label: 'Team', icon: Shield, end: false as const }
+
+type NavItem = (typeof baseNav)[number] | typeof teamNav
 
 function SidebarBrand() {
   return (
@@ -40,9 +45,11 @@ function SidebarBrand() {
 }
 
 function SidebarNav({
+  nav,
   onNavigate,
   onSignOut,
 }: {
+  nav: NavItem[]
   onNavigate?: () => void
   onSignOut: () => void
 }) {
@@ -129,14 +136,16 @@ function MobileDrawer({
 }
 
 export function DashboardLayout() {
-  const { signOut } = useAuth()
+  const { signOut, isSuperAdmin } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [navOpen, setNavOpen] = useState(false)
 
+  const nav: NavItem[] = isSuperAdmin ? [...baseNav, teamNav] : baseNav
+
   const currentPage =
-    nav.find(({ to, end }) =>
-      end ? location.pathname === to : location.pathname.startsWith(to),
+    nav.find((item) =>
+      item.end ? location.pathname === item.to : location.pathname.startsWith(item.to),
     )?.label ?? 'Admin'
 
   useEffect(() => {
@@ -156,11 +165,11 @@ export function DashboardLayout() {
     <div className="flex min-h-screen bg-admin-bg">
       <aside className="hidden w-56 shrink-0 flex-col border-r border-admin-border bg-admin-bg p-4 lg:flex">
         <SidebarBrand />
-        <SidebarNav onSignOut={() => void handleSignOut()} />
+        <SidebarNav nav={nav} onSignOut={() => void handleSignOut()} />
       </aside>
 
       <MobileDrawer open={navOpen} onClose={closeNav}>
-        <SidebarNav onNavigate={closeNav} onSignOut={() => void handleSignOut()} />
+        <SidebarNav nav={nav} onNavigate={closeNav} onSignOut={() => void handleSignOut()} />
       </MobileDrawer>
 
       <main className="flex min-w-0 flex-1 flex-col">

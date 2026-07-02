@@ -2,7 +2,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { DashboardLayout } from './components/layout/DashboardLayout'
 import { LoginPage } from './pages/LoginPage'
-import { NotAllowedEmailPage, NotOperatorPage } from './pages/NotOperatorPage'
+import { NotAllowedEmailPage } from './pages/NotOperatorPage'
+import { PendingAccessPage } from './pages/PendingAccessPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { DriversPage } from './pages/DriversPage'
 import { DriverApprovalPage } from './pages/DriverApprovalPage'
@@ -11,6 +12,7 @@ import { LeavePage } from './pages/LeavePage'
 import { AttendancePage } from './pages/AttendancePage'
 import { AuditPage } from './pages/AuditPage'
 import { DriverDetailPage } from './pages/DriverDetailPage'
+import { UsersPage } from './pages/UsersPage'
 import { LoadingState } from './components/ui/AdminUi'
 import { isSupabaseConfigured } from './lib/supabase'
 
@@ -30,7 +32,8 @@ function ConfigError() {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading, isOperator, operatorLoading, emailAllowed } = useAuth()
+  const { session, loading, isOperator, operatorLoading, emailAllowed, operatorStatus } =
+    useAuth()
 
   if (loading || operatorLoading) {
     return (
@@ -42,7 +45,19 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!session) return <Navigate to="/login" replace />
   if (!emailAllowed) return <NotAllowedEmailPage />
-  if (!isOperator) return <NotOperatorPage />
+  if (operatorStatus === 'revoked') return <PendingAccessPage variant="revoked" />
+  if (operatorStatus === 'pending' || operatorStatus === 'none') {
+    return <PendingAccessPage variant="pending" />
+  }
+  if (!isOperator) return <PendingAccessPage variant="pending" />
+  return <>{children}</>
+}
+
+function SuperAdminRoute({ children }: { children: React.ReactNode }) {
+  const { isSuperAdmin, operatorLoading } = useAuth()
+
+  if (operatorLoading) return <LoadingState />
+  if (!isSuperAdmin) return <Navigate to="/" replace />
   return <>{children}</>
 }
 
@@ -96,6 +111,14 @@ function AppRoutes() {
         <Route path="leave" element={<LeavePage />} />
         <Route path="fare" element={<FarePage />} />
         <Route path="audit" element={<AuditPage />} />
+        <Route
+          path="team"
+          element={
+            <SuperAdminRoute>
+              <UsersPage />
+            </SuperAdminRoute>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

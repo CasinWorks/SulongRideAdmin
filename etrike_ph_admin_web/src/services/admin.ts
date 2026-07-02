@@ -5,9 +5,15 @@ import type {
   DailyTripCount,
   DriverProfile,
   DriverRow,
+  EffectiveFare,
   FareConfig,
+  FareSchedule,
+  FareScheduleType,
   FleetOverview,
   LeaveRow,
+  OperatorApprovalStatus,
+  OperatorRole,
+  OperatorRow,
   TripRow,
 } from '../types'
 import { fetchAuditLogsForDriver, logAudit } from './audit'
@@ -50,19 +56,146 @@ function mapTrip(row: Record<string, unknown>): TripRow {
   }
 }
 
-export async function isOperator(): Promise<boolean> {
+function mapOperator(row: Record<string, unknown>): OperatorRow {
+  return {
+    id: row.id as string,
+    email: (row.email as string) ?? '',
+    full_name: (row.full_name as string) ?? '',
+    approval_status: (row.approval_status as OperatorApprovalStatus) ?? 'pending',
+    role: (row.role as OperatorRole) ?? 'admin',
+    approved_by: (row.approved_by as string) ?? null,
+    approved_at: (row.approved_at as string) ?? null,
+    created_at: (row.created_at as string) ?? null,
+  }
+}
+
+
+export async function fetchCurrentOperator(): Promise<OperatorRow | null> {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return false
+  if (!user) return null
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('operators')
-    .select('id')
+    .select('*')
     .eq('id', user.id)
     .maybeSingle()
 
-  return data != null
+  if (error) throw error
+  return data ? mapOperator(data as Record<string, unknown>) : null
+}
+
+export async function ensurePendingOperator(): Promise<OperatorRow | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const existing = await fetchCurrentOperator()
+  if (existing) return existing
+
+  const fullName =
+    (user.user_metadata?.full_name as string | undefined) ??
+    (user.user_metadata?.name as string | undefined) ??
+    'Operator'
+
+  const { data, error } = await supabase
+    .from('operators')
+    .insert({
+      id: user.id,
+      email: user.email ?? '',
+      full_name: fullName,
+      approval_status: 'pending',
+      role: 'admin',
+    })
+    .select('*')
+    .maybeSingle()
+
+  if (error) {
+    const retry = await fetchCurrentOperator()
+    if (retry) return retry
+    throw error
+  }
+
+  return data ? mapOperator(data as Record<string, unknown>) : null
+}
+
+export async function isOperator(): Promise<boolean> {
+  const op = await fetchCurrentOperator()
+  return op?.approval_status === 'approved'
+}
+
+export async function listOperators(status?: OperatorApprovalStatus): Promise<OperatorRow[]> {
+  let query = supabase.from('operators').select('*')
+  if (status) query = query.eq('approval_status', status)
+  const { data, error } = await query.order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((r) => mapOperator(r as Record<string, unknown>))
+}
+
+export async function setOperatorApproval(
+  operatorId: string,
+  status: OperatorApprovalStatus,
+): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const payload: Record<string, unknown> = { approval_status: status }
+  if (status === 'approved') {
+    payload.approved_by = user?.id ?? null
+    payload.approved_at = new Date().toISOString()
+  } else {
+    payload.approved_by = null
+    payload.approved_at = null
+  }
+
+  const { error } = await supabase.from('operators').update(payload).eq('id', operatorId)
+  if (error) throw error
+
+  const { data: target } = await supabase
+    .from('operators')
+    .select('email, full_name')
+    .eq('id', operatorId)
+    .maybeSingle()
+
+  await logAudit({
+    action: 'operator.approval',
+    entityType: 'operators',
+    entityId: operatorId,
+    summary: `Operator ${target?.email ?? operatorId} set to ${status}`,
+    metadata: { status, email: target?.email },
+  })
+}
+
+export async function setOperatorRole(operatorId: string, role: OperatorRole): Promise<void> {
+  const { error } = await supabase.from('operators').update({ role }).eq('id', operatorId)
+  if (error) throw error
+
+  const { data: target } = await supabase
+    .from('operators')
+    .select('email, full_name')
+    .eq('id', operatorId)
+    .maybeSingle()
+
+  await logAudit({
+    action: 'operator.role',
+    entityType: 'operators',
+    entityId: operatorId,
+    summary: `Operator ${target?.email ?? operatorId} role set to ${role}`,
+    metadata: { role, email: target?.email },
+  })
+}
+
+export async function countPendingOperators(): Promise<number> {
+  const { count, error } = await supabase
+    .from('operators')
+    .select('*', { count: 'exact', head: true })
+    .eq('approval_status', 'pending')
+
+  if (error) return 0
+  return count ?? 0
 }
 
 export async function listDrivers(approvalStatus?: string): Promise<DriverRow[]> {
@@ -105,6 +238,37 @@ export async function setDriverApproval(
   })
 }
 
+function mapFareConfig(row: Record<string, unknown>): FareConfig {
+  return {
+    id: row.id as string,
+    base_fare: Number(row.base_fare ?? 40),
+    per_km_rate: Number(row.per_km_rate ?? 0),
+    minimum_fare: Number(row.minimum_fare ?? 40),
+    currency: (row.currency as string) ?? 'PHP',
+    is_active: (row.is_active as boolean) ?? true,
+    updated_at: (row.updated_at as string) ?? null,
+  }
+}
+
+function mapFareSchedule(row: Record<string, unknown>): FareSchedule {
+  return {
+    id: row.id as string,
+    label: (row.label as string) ?? '',
+    base_fare: Number(row.base_fare ?? 40),
+    per_km_rate: Number(row.per_km_rate ?? 0),
+    minimum_fare: Number(row.minimum_fare ?? 40),
+    currency: (row.currency as string) ?? 'PHP',
+    schedule_type: (row.schedule_type as FareScheduleType) ?? 'discount',
+    starts_at: row.starts_at as string,
+    ends_at: (row.ends_at as string) ?? null,
+    is_active: (row.is_active as boolean) ?? true,
+    created_by: (row.created_by as string) ?? null,
+    created_at: (row.created_at as string) ?? '',
+    updated_at: (row.updated_at as string) ?? '',
+  }
+}
+
+/** Default fare from fare_config (used when no schedule is active). */
 export async function fetchActiveFare(): Promise<FareConfig | null> {
   const { data, error } = await supabase
     .from('fare_config')
@@ -115,16 +279,138 @@ export async function fetchActiveFare(): Promise<FareConfig | null> {
     .maybeSingle()
   if (error) throw error
   if (!data) return null
-  const row = data as Record<string, unknown>
-  return {
-    id: row.id as string,
-    base_fare: Number(row.base_fare ?? 40),
-    per_km_rate: Number(row.per_km_rate ?? 0),
-    minimum_fare: Number(row.minimum_fare ?? 40),
-    currency: (row.currency as string) ?? 'PHP',
-    is_active: (row.is_active as boolean) ?? true,
-    updated_at: (row.updated_at as string) ?? null,
+  return mapFareConfig(data as Record<string, unknown>)
+}
+
+/** Resolved fare at now() — active schedule if in window, else default. */
+export async function fetchEffectiveFare(): Promise<EffectiveFare | null> {
+  const { data, error } = await supabase
+    .from('effective_fare_config')
+    .select('*')
+    .maybeSingle()
+
+  if (error) {
+    const fallback = await fetchActiveFare()
+    if (!fallback) return null
+    return { ...fallback, fare_source: 'default', schedule_id: null, schedule_label: null }
   }
+  if (!data) return null
+  const row = data as Record<string, unknown>
+  const base = mapFareConfig(row)
+  return {
+    ...base,
+    fare_source: (row.fare_source as EffectiveFare['fare_source']) ?? 'default',
+    schedule_id: (row.schedule_id as string) ?? null,
+    schedule_label: (row.schedule_label as string) ?? null,
+  }
+}
+
+export async function listFareSchedules(): Promise<FareSchedule[]> {
+  const { data, error } = await supabase
+    .from('fare_schedules')
+    .select('*')
+    .order('starts_at', { ascending: false })
+
+  if (error) throw error
+  return (data ?? []).map((r) => mapFareSchedule(r as Record<string, unknown>))
+}
+
+export async function createFareSchedule(params: {
+  label: string
+  scheduleType: FareScheduleType
+  baseFare: number
+  perKmRate: number
+  minimumFare: number
+  startsAt: string
+  endsAt: string | null
+}): Promise<FareSchedule> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const { data, error } = await supabase
+    .from('fare_schedules')
+    .insert({
+      label: params.label,
+      schedule_type: params.scheduleType,
+      base_fare: params.baseFare,
+      per_km_rate: params.perKmRate,
+      minimum_fare: params.minimumFare,
+      starts_at: params.startsAt,
+      ends_at: params.endsAt,
+      created_by: user?.id ?? null,
+    })
+    .select('*')
+    .single()
+
+  if (error) throw error
+  const schedule = mapFareSchedule(data as Record<string, unknown>)
+  await logAudit({
+    action: 'fare.schedule.create',
+    entityType: 'fare_schedules',
+    entityId: schedule.id,
+    summary: `Scheduled fare "${schedule.label}" — base ₱${schedule.base_fare} from ${schedule.starts_at}`,
+    metadata: {
+      schedule_type: schedule.schedule_type,
+      base_fare: schedule.base_fare,
+      starts_at: schedule.starts_at,
+      ends_at: schedule.ends_at,
+    },
+  })
+  return schedule
+}
+
+export async function updateFareSchedule(
+  id: string,
+  params: {
+    label: string
+    scheduleType: FareScheduleType
+    baseFare: number
+    perKmRate: number
+    minimumFare: number
+    startsAt: string
+    endsAt: string | null
+    isActive: boolean
+  },
+): Promise<void> {
+  const { error } = await supabase
+    .from('fare_schedules')
+    .update({
+      label: params.label,
+      schedule_type: params.scheduleType,
+      base_fare: params.baseFare,
+      per_km_rate: params.perKmRate,
+      minimum_fare: params.minimumFare,
+      starts_at: params.startsAt,
+      ends_at: params.endsAt,
+      is_active: params.isActive,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+
+  if (error) throw error
+  await logAudit({
+    action: 'fare.schedule.update',
+    entityType: 'fare_schedules',
+    entityId: id,
+    summary: `Updated scheduled fare "${params.label}"`,
+    metadata: params,
+  })
+}
+
+export async function deactivateFareSchedule(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('fare_schedules')
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq('id', id)
+
+  if (error) throw error
+  await logAudit({
+    action: 'fare.schedule.deactivate',
+    entityType: 'fare_schedules',
+    entityId: id,
+    summary: 'Deactivated scheduled fare',
+  })
 }
 
 export async function updateActiveFare(params: {
@@ -147,7 +433,7 @@ export async function updateActiveFare(params: {
     action: 'fare.update',
     entityType: 'fare_config',
     entityId: params.id,
-    summary: `Fare updated — base ₱${params.baseFare}, per km ₱${params.perKmRate}, min ₱${params.minimumFare}`,
+    summary: `Default fare updated — base ₱${params.baseFare}, per km ₱${params.perKmRate}, min ₱${params.minimumFare}`,
     metadata: {
       base_fare: params.baseFare,
       per_km_rate: params.perKmRate,
@@ -305,6 +591,20 @@ export async function fetchFleetOverview(): Promise<FleetOverview> {
         subtitle: 'VL and SL requests submitted recently',
         borderColor: '#f59e0b',
         tab: 'leave',
+      })
+    }
+  } catch {
+    /* optional */
+  }
+
+  try {
+    const pendingOperators = await countPendingOperators()
+    if (pendingOperators > 0) {
+      flaggedItems.push({
+        title: `${pendingOperators} operator${pendingOperators === 1 ? '' : 's'} pending approval`,
+        subtitle: 'New admin sign-ins waiting for super admin review',
+        borderColor: '#f59e0b',
+        tab: 'team',
       })
     }
   } catch {

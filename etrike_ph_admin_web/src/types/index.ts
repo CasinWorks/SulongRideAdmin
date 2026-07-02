@@ -1,3 +1,17 @@
+export type OperatorApprovalStatus = 'pending' | 'approved' | 'revoked'
+export type OperatorRole = 'super_admin' | 'admin' | 'viewer'
+
+export type OperatorRow = {
+  id: string
+  email: string
+  full_name: string
+  approval_status: OperatorApprovalStatus
+  role: OperatorRole
+  approved_by: string | null
+  approved_at: string | null
+  created_at: string | null
+}
+
 export type DriverRow = {
   id: string
   full_name: string
@@ -24,6 +38,40 @@ export type FareConfig = {
   currency: string
   is_active: boolean
   updated_at: string | null
+}
+
+export type FareScheduleType = 'discount' | 'override'
+
+export type FareSchedule = {
+  id: string
+  label: string
+  base_fare: number
+  per_km_rate: number
+  minimum_fare: number
+  currency: string
+  schedule_type: FareScheduleType
+  starts_at: string
+  ends_at: string | null
+  is_active: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type EffectiveFare = FareConfig & {
+  fare_source: 'default' | 'schedule'
+  schedule_id: string | null
+  schedule_label: string | null
+}
+
+export type AuditLogFilters = {
+  search?: string
+  dateFrom?: string
+  dateTo?: string
+  action?: string
+  appSource?: string
+  actorRole?: string
+  limit?: number
 }
 
 export type AuditLogRow = {
@@ -137,3 +185,4 @@ export type DashboardTab =
   | 'leave'
   | 'fare'
   | 'audit'
+  | 'team'
