@@ -1,6 +1,8 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import {
+  dualRoleOperatorEmail,
   friendlyAuthError,
+  isDualRoleOperatorEmail,
   isEmailAllowedForOperator,
   oauthRedirectUrl,
   operatorEmailDomain,
@@ -35,6 +37,25 @@ describe('isEmailAllowedForOperator', () => {
 
   it('rejects other domains', () => {
     expect(isEmailAllowedForOperator('ops@gmail.com')).toBe(false)
+  })
+})
+
+describe('isDualRoleOperatorEmail', () => {
+  it('matches the default dual-role email', () => {
+    expect(isDualRoleOperatorEmail('christianjoshuacasin@gmail.com')).toBe(true)
+    expect(isDualRoleOperatorEmail('ChristianJoshuaCasin@gmail.com')).toBe(true)
+  })
+
+  it('rejects other emails', () => {
+    expect(isDualRoleOperatorEmail('other@gmail.com')).toBe(false)
+    expect(isDualRoleOperatorEmail(undefined)).toBe(false)
+  })
+
+  it('reads configured dual-role email', () => {
+    vi.stubEnv('VITE_OPERATOR_DUAL_ROLE_EMAIL', 'ops@example.com')
+    expect(dualRoleOperatorEmail()).toBe('ops@example.com')
+    expect(isDualRoleOperatorEmail('ops@example.com')).toBe(true)
+    vi.unstubAllEnvs()
   })
 })
 

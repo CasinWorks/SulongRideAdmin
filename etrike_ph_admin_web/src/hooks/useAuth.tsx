@@ -8,7 +8,12 @@ import {
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { isEmailAllowedForOperator, oauthRedirectUrl, operatorEmailDomain } from '../lib/operatorAuth'
+import {
+  isDualRoleOperatorEmail,
+  isEmailAllowedForOperator,
+  oauthRedirectUrl,
+  operatorEmailDomain,
+} from '../lib/operatorAuth'
 import { fetchCurrentOperator, isDriverAccount, isOperator } from '../services/admin'
 import { logAudit } from '../services/audit'
 import type { OperatorApprovalStatus, OperatorRole, OperatorRow } from '../types'
@@ -65,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isDriverAccount(),
       ])
       setOperator(current)
-      setIsDriver(driver)
+      setIsDriver(driver && !isDualRoleOperatorEmail(session.user.email))
       setIsOp(await isOperator())
     } finally {
       setOperatorLoading(false)

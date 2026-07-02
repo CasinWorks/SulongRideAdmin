@@ -1,3 +1,16 @@
+const DEFAULT_DUAL_ROLE_OPERATOR_EMAIL = 'christianjoshuacasin@gmail.com'
+
+/** Email allowed to hold operator, driver, and rider accounts on the same auth user. */
+export function dualRoleOperatorEmail(): string {
+  const configured = import.meta.env.VITE_OPERATOR_DUAL_ROLE_EMAIL?.trim().toLowerCase()
+  return configured || DEFAULT_DUAL_ROLE_OPERATOR_EMAIL
+}
+
+export function isDualRoleOperatorEmail(email: string | undefined | null): boolean {
+  if (!email) return false
+  return email.toLowerCase() === dualRoleOperatorEmail()
+}
+
 /** Optional: restrict sign-in to `@this-domain` (e.g. casinworks.com). Leave unset to allow any email. */
 export function operatorEmailDomain(): string | null {
   const domain = import.meta.env.VITE_OPERATOR_EMAIL_DOMAIN?.trim()
