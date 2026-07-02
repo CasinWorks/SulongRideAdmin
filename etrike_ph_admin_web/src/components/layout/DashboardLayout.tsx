@@ -186,9 +186,6 @@ export function DashboardLayout() {
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium text-admin-accent lg:hidden">{currentPage}</p>
               <h2 className="text-lg font-semibold text-black/87 sm:text-xl">Operator dashboard</h2>
-              <p className="text-sm text-black/45">
-                Fleet, drivers, fares, and compliance — connected to Supabase
-              </p>
             </div>
           </div>
         </header>

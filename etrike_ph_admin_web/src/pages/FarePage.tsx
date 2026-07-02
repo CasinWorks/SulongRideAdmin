@@ -2,21 +2,17 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   createFareSchedule,
   deactivateFareSchedule,
+  DEFAULT_FARE,
   fetchActiveFare,
   fetchEffectiveFare,
+  initializeDefaultFare,
   listFareSchedules,
   updateActiveFare,
   updateFareSchedule,
 } from '../services/admin'
 import type { EffectiveFare, FareConfig, FareSchedule, FareScheduleType } from '../types'
 import { formatDateTime, formatPeso } from '../lib/format'
-import {
-  ErrorState,
-  GhostButton,
-  LoadingState,
-  PanelCard,
-  PrimaryButton,
-} from '../components/ui/AdminUi'
+import { GhostButton, LoadingState, PanelCard, PrimaryButton } from '../components/ui/AdminUi'
 
 const inputCls =
   'mt-1 w-full rounded-xl border border-admin-border px-3 py-2.5 text-sm outline-none focus:border-admin-accent'
@@ -71,6 +67,7 @@ const emptyForm = {
 export function FarePage() {
   const [defaultFare, setDefaultFare] = useState<FareConfig | null>(null)
   const [effective, setEffective] = useState<EffectiveFare | null>(null)
+  const [initializing, setInitializing] = useState(false)
   const [schedules, setSchedules] = useState<FareSchedule[]>([])
   const [base, setBase] = useState('')
   const [perKm, setPerKm] = useState('')
@@ -96,6 +93,10 @@ export function FarePage() {
       setBase(String(def.base_fare))
       setPerKm(String(def.per_km_rate))
       setMinimum(String(def.minimum_fare))
+    } else {
+      setBase(String(DEFAULT_FARE.baseFare))
+      setPerKm(String(DEFAULT_FARE.perKmRate))
+      setMinimum(String(DEFAULT_FARE.minimumFare))
     }
   }, [])
 
@@ -106,23 +107,42 @@ export function FarePage() {
   }, [refresh])
 
   async function handleSaveDefault() {
-    if (!defaultFare) return
     setSaving(true)
     setError(null)
     setMessage(null)
     try {
-      await updateActiveFare({
-        id: defaultFare.id,
+      const payload = {
         baseFare: Number(base),
         perKmRate: Number(perKm),
         minimumFare: Number(minimum),
-      })
-      setMessage('Default fare updated')
+      }
+      if (defaultFare) {
+        await updateActiveFare({ id: defaultFare.id, ...payload })
+        setMessage('Default fare updated')
+      } else {
+        await initializeDefaultFare(payload)
+        setMessage('Default fare created')
+      }
       await refresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleInitializeDefault() {
+    setInitializing(true)
+    setError(null)
+    setMessage(null)
+    try {
+      await initializeDefaultFare()
+      setMessage('Default fare initialized at ₱40')
+      await refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Initialize failed')
+    } finally {
+      setInitializing(false)
     }
   }
 
@@ -194,14 +214,16 @@ export function FarePage() {
   }
 
   if (loading) return <LoadingState />
-  if (!defaultFare) {
-    return (
-      <ErrorState message="No active fare_config row. Run supabase/fix_carmona_pilot.sql in Supabase SQL Editor." />
-    )
-  }
 
   return (
     <div className="space-y-6">
+      {!defaultFare ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          No active fare in the database yet. Showing ₱40 fallback. Initialize below to persist
+          the default fare for rider and driver apps.
+        </div>
+      ) : null}
+
       <PanelCard title="Effective fare (now)" index={0}>
         {effective ? (
           <div className="flex flex-wrap items-start gap-4">
@@ -220,8 +242,10 @@ export function FarePage() {
                     <strong>{effective.schedule_label || 'Unnamed'}</strong> — reverts to default
                     when the window ends.
                   </>
-                ) : (
+                ) : defaultFare ? (
                   <>Using default fare from fare_config.</>
+                ) : (
+                  <>Using ₱40 fallback until fare_config is initialized.</>
                 )}
               </p>
             </div>
@@ -235,9 +259,7 @@ export function FarePage() {
               {effective.fare_source}
             </span>
           </div>
-        ) : (
-          <p className="text-sm text-black/55">Could not resolve effective fare.</p>
-        )}
+        ) : null}
       </PanelCard>
 
       <PanelCard title="Default fare (₱40 baseline)" index={1}>
@@ -263,10 +285,19 @@ export function FarePage() {
               className={inputCls}
             />
           </label>
-          <PrimaryButton disabled={saving} onClick={() => void handleSaveDefault()}>
-            {saving ? 'Saving…' : 'Save default fare'}
-          </PrimaryButton>
+          <div className="flex flex-wrap gap-2">
+            {!defaultFare ? (
+              <PrimaryButton disabled={initializing} onClick={() => void handleInitializeDefault()}>
+                {initializing ? 'Initializing…' : 'Initialize default fare (₱40)'}
+              </PrimaryButton>
+            ) : null}
+            <PrimaryButton disabled={saving} onClick={() => void handleSaveDefault()}>
+              {saving ? 'Saving…' : defaultFare ? 'Save default fare' : 'Save as new default fare'}
+            </PrimaryButton>
+          </div>
         </div>
+        {message ? <p className="mt-4 text-sm text-green-700">{message}</p> : null}
+        {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
       </PanelCard>
 
       <PanelCard title="Scheduled fare changes" index={2}>
@@ -424,9 +455,6 @@ export function FarePage() {
             {editingId ? <GhostButton onClick={cancelEdit}>Cancel</GhostButton> : null}
           </div>
         </div>
-
-        {message ? <p className="mt-4 text-sm text-green-700">{message}</p> : null}
-        {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
       </PanelCard>
     </div>
   )

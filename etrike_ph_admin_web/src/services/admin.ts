@@ -238,13 +238,35 @@ export async function setDriverApproval(
   })
 }
 
+export const DEFAULT_FARE = {
+  baseFare: 40,
+  perKmRate: 0,
+  minimumFare: 40,
+  currency: 'PHP',
+} as const
+
+function hardcodedDefaultEffectiveFare(): EffectiveFare {
+  return {
+    id: '',
+    base_fare: DEFAULT_FARE.baseFare,
+    per_km_rate: DEFAULT_FARE.perKmRate,
+    minimum_fare: DEFAULT_FARE.minimumFare,
+    currency: DEFAULT_FARE.currency,
+    is_active: true,
+    updated_at: null,
+    fare_source: 'default',
+    schedule_id: null,
+    schedule_label: null,
+  }
+}
+
 function mapFareConfig(row: Record<string, unknown>): FareConfig {
   return {
     id: row.id as string,
-    base_fare: Number(row.base_fare ?? 40),
-    per_km_rate: Number(row.per_km_rate ?? 0),
-    minimum_fare: Number(row.minimum_fare ?? 40),
-    currency: (row.currency as string) ?? 'PHP',
+    base_fare: Number(row.base_fare ?? DEFAULT_FARE.baseFare),
+    per_km_rate: Number(row.per_km_rate ?? DEFAULT_FARE.perKmRate),
+    minimum_fare: Number(row.minimum_fare ?? DEFAULT_FARE.minimumFare),
+    currency: (row.currency as string) ?? DEFAULT_FARE.currency,
     is_active: (row.is_active as boolean) ?? true,
     updated_at: (row.updated_at as string) ?? null,
   }
@@ -282,20 +304,7 @@ export async function fetchActiveFare(): Promise<FareConfig | null> {
   return mapFareConfig(data as Record<string, unknown>)
 }
 
-/** Resolved fare at now() — active schedule if in window, else default. */
-export async function fetchEffectiveFare(): Promise<EffectiveFare | null> {
-  const { data, error } = await supabase
-    .from('effective_fare_config')
-    .select('*')
-    .maybeSingle()
-
-  if (error) {
-    const fallback = await fetchActiveFare()
-    if (!fallback) return null
-    return { ...fallback, fare_source: 'default', schedule_id: null, schedule_label: null }
-  }
-  if (!data) return null
-  const row = data as Record<string, unknown>
+function mapEffectiveFare(row: Record<string, unknown>): EffectiveFare {
   const base = mapFareConfig(row)
   return {
     ...base,
@@ -303,6 +312,25 @@ export async function fetchEffectiveFare(): Promise<EffectiveFare | null> {
     schedule_id: (row.schedule_id as string) ?? null,
     schedule_label: (row.schedule_label as string) ?? null,
   }
+}
+
+/** Resolved fare at now() — active schedule if in window, else default. */
+export async function fetchEffectiveFare(): Promise<EffectiveFare> {
+  const { data, error } = await supabase
+    .from('effective_fare_config')
+    .select('*')
+    .maybeSingle()
+
+  if (!error && data) {
+    return mapEffectiveFare(data as Record<string, unknown>)
+  }
+
+  const fallback = await fetchActiveFare()
+  if (fallback) {
+    return { ...fallback, fare_source: 'default', schedule_id: null, schedule_label: null }
+  }
+
+  return hardcodedDefaultEffectiveFare()
 }
 
 export async function listFareSchedules(): Promise<FareSchedule[]> {
@@ -411,6 +439,43 @@ export async function deactivateFareSchedule(id: string): Promise<void> {
     entityId: id,
     summary: 'Deactivated scheduled fare',
   })
+}
+
+export async function initializeDefaultFare(params?: {
+  baseFare?: number
+  perKmRate?: number
+  minimumFare?: number
+}): Promise<FareConfig> {
+  const baseFare = params?.baseFare ?? DEFAULT_FARE.baseFare
+  const perKmRate = params?.perKmRate ?? DEFAULT_FARE.perKmRate
+  const minimumFare = params?.minimumFare ?? DEFAULT_FARE.minimumFare
+
+  const { data, error } = await supabase
+    .from('fare_config')
+    .insert({
+      base_fare: baseFare,
+      per_km_rate: perKmRate,
+      minimum_fare: minimumFare,
+      currency: DEFAULT_FARE.currency,
+      is_active: true,
+    })
+    .select('*')
+    .single()
+
+  if (error) throw error
+  const config = mapFareConfig(data as Record<string, unknown>)
+  await logAudit({
+    action: 'fare.initialize',
+    entityType: 'fare_config',
+    entityId: config.id,
+    summary: `Default fare initialized — base ₱${config.base_fare}, per km ₱${config.per_km_rate}, min ₱${config.minimum_fare}`,
+    metadata: {
+      base_fare: config.base_fare,
+      per_km_rate: config.per_km_rate,
+      minimum_fare: config.minimum_fare,
+    },
+  })
+  return config
 }
 
 export async function updateActiveFare(params: {
