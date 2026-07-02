@@ -2,7 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { DashboardLayout } from './components/layout/DashboardLayout'
 import { LoginPage } from './pages/LoginPage'
-import { NotOperatorPage } from './pages/NotOperatorPage'
+import { NotAllowedEmailPage, NotOperatorPage } from './pages/NotOperatorPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { DriversPage } from './pages/DriversPage'
 import { DriverApprovalPage } from './pages/DriverApprovalPage'
@@ -30,7 +30,7 @@ function ConfigError() {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading, isOperator, operatorLoading } = useAuth()
+  const { session, loading, isOperator, operatorLoading, emailAllowed } = useAuth()
 
   if (loading || operatorLoading) {
     return (
@@ -41,6 +41,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!session) return <Navigate to="/login" replace />
+  if (!emailAllowed) return <NotAllowedEmailPage />
   if (!isOperator) return <NotOperatorPage />
   return <>{children}</>
 }

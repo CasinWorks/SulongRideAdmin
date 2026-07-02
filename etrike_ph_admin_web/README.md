@@ -7,6 +7,7 @@ Uses the **same Supabase project** as the rider and driver mobile apps.
 ## Features
 
 - Operator login (Supabase Auth + `operators` table gate)
+- **Google sign-in** (OAuth) or email/password
 - Fleet overview (KPIs, 7-day chart, flagged items)
 - Drivers directory & driver profile
 - Pending / approved / revoked approval workflow
@@ -18,15 +19,28 @@ Uses the **same Supabase project** as the rider and driver mobile apps.
 
 1. Run Supabase SQL (if not done): `etrike_ph_user/supabase/fix_carmona_pilot.sql`
 
-2. Create an operator account in Supabase Auth, then:
+2. Create an operator account — **email/password** or **Google**:
 
 ```sql
+-- After the user signs in once (email or Google), grant operator access:
 insert into public.operators (id, email, full_name)
-select id, email, 'Operator'
+select id, email, coalesce(raw_user_meta_data->>'full_name', 'Operator')
 from auth.users
-where email = 'ops@yourdomain.com'
+where email = 'ops@gmail.com'
 on conflict (id) do update set email = excluded.email;
 ```
+
+### Google sign-in (Gmail)
+
+1. **Google Cloud Console** → OAuth client (Web) → redirect URI:
+   `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback`
+2. **Supabase** → Authentication → Providers → **Google** → enable, paste Client ID + Secret.
+3. **Supabase** → URL Configuration → redirect URLs:
+   - `http://localhost:5173`
+   - `https://your-admin.vercel.app`
+4. Optional: set `VITE_OPERATOR_EMAIL_DOMAIN` in `.env.local` / Vercel to restrict to one domain.
+
+Google users still need a row in `operators` (same SQL as above).
 
 3. Configure environment:
 

@@ -9,6 +9,7 @@ import {
 } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { isEmailAllowedForOperator, oauthRedirectUrl, operatorEmailDomain } from '../lib/operatorAuth'
 import { isOperator } from '../services/admin'
 import { logAudit } from '../services/audit'
 
@@ -18,7 +19,9 @@ type AuthState = {
   loading: boolean
   isOperator: boolean
   operatorLoading: boolean
+  emailAllowed: boolean
   signIn: (email: string, password: string) => Promise<void>
+  signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   refreshOperator: () => Promise<void>
 }
@@ -31,8 +34,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isOp, setIsOp] = useState(false)
   const [operatorLoading, setOperatorLoading] = useState(false)
 
+  const emailAllowed = isEmailAllowedForOperator(session?.user?.email)
+
   const refreshOperator = useCallback(async () => {
-    if (!session?.user) {
+    if (!session?.user || !isEmailAllowedForOperator(session.user.email)) {
       setIsOp(false)
       return
     }
@@ -52,9 +57,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, next) => {
+    } = supabase.auth.onAuthStateChange((event, next) => {
       setSession(next)
       setLoading(false)
+      if (event === 'SIGNED_IN' && next?.user) {
+        const provider =
+          (next.user.app_metadata?.provider as string | undefined) ?? 'email'
+        void logAudit({
+          action: 'auth.sign_in',
+          summary: 'Operator signed in',
+          metadata: { provider },
+        })
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -67,10 +81,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
-    await logAudit({
-      action: 'auth.sign_in',
-      summary: 'Operator signed in',
+  }, [])
+
+  const signInWithGoogle = useCallback(async () => {
+    const domain = operatorEmailDomain()
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: oauthRedirectUrl(),
+        queryParams: domain ? { hd: domain } : undefined,
+      },
     })
+    if (error) throw error
   }, [])
 
   const signOut = useCallback(async () => {
@@ -86,11 +108,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       isOperator: isOp,
       operatorLoading,
+      emailAllowed,
       signIn,
+      signInWithGoogle,
       signOut,
       refreshOperator,
     }),
-    [session, loading, isOp, operatorLoading, signIn, signOut, refreshOperator],
+    [
+      session,
+      loading,
+      isOp,
+      operatorLoading,
+      emailAllowed,
+      signIn,
+      signInWithGoogle,
+      signOut,
+      refreshOperator,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
