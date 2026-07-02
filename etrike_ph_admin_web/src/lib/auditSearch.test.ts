@@ -7,6 +7,7 @@ const row: AuditLogRow = {
   actor_id: 'a1',
   actor_role: 'operator',
   actor_email: 'ops@example.com',
+  actor_name: 'Ops User',
   action: 'fare.update',
   entity_type: 'fare_config',
   entity_id: 'f1',

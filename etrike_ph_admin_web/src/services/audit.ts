@@ -1,6 +1,5 @@
 import { supabase } from '../lib/supabase'
 import { supabaseErrorMessage } from '../lib/supabaseError'
-import { auditActorRole, type AuditActorRole } from '../lib/auditActorRole'
 import { endOfDayIso, matchesAuditSearch } from '../lib/auditSearch'
 import type { AuditLogFilters, AuditLogRow } from '../types'
 
@@ -10,30 +9,20 @@ export async function logAudit(params: {
   entityType?: string
   entityId?: string
   metadata?: Record<string, unknown>
+  appSource?: 'admin' | 'driver' | 'rider'
 }): Promise<void> {
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return
 
-  let actorRole: AuditActorRole = 'operator'
-  const { data: op } = await supabase
-    .from('operators')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
-  if (op?.role) actorRole = auditActorRole(op.role as string)
-
-  const { error } = await supabase.from('audit_logs').insert({
-    actor_id: user.id,
-    actor_role: actorRole,
-    actor_email: user.email,
-    action: params.action,
-    entity_type: params.entityType ?? null,
-    entity_id: params.entityId ?? null,
-    summary: params.summary,
-    metadata: params.metadata ?? {},
-    app_source: 'admin',
+  const { error } = await supabase.rpc('insert_audit_log', {
+    p_action: params.action,
+    p_summary: params.summary,
+    p_entity_type: params.entityType ?? null,
+    p_entity_id: params.entityId ?? null,
+    p_metadata: params.metadata ?? {},
+    p_app_source: params.appSource ?? 'admin',
   })
 
   if (error) {

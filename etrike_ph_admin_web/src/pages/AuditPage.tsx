@@ -5,7 +5,7 @@ import { formatDateTime } from '../lib/format'
 import { ErrorState, GhostButton, LoadingState, PanelCard } from '../components/ui/adminPageUi'
 
 const APP_SOURCES = ['admin', 'driver', 'rider'] as const
-const ACTOR_ROLES = ['operator', 'driver', 'rider'] as const
+const ACTOR_ROLES = ['super_admin', 'admin', 'viewer', 'operator', 'driver', 'rider'] as const
 
 function defaultDateFrom(): string {
   const d = new Date()
@@ -85,7 +85,13 @@ export function AuditPage() {
     const q = search.trim().toLowerCase()
     if (!q) return rows
     return rows.filter((r) => {
-      const haystack = [r.summary, r.action, r.actor_email ?? '', r.entity_id ?? '']
+      const haystack = [
+        r.summary,
+        r.action,
+        r.actor_email ?? '',
+        r.actor_name ?? '',
+        r.entity_id ?? '',
+      ]
         .join(' ')
         .toLowerCase()
       return haystack.includes(q)
@@ -220,7 +226,9 @@ export function AuditPage() {
                       </td>
                       <td className="py-3 pr-4 font-mono text-xs">{r.action}</td>
                       <td className="py-3 pr-4">{r.summary}</td>
-                      <td className="py-3 pr-4 text-black/55">{r.actor_email ?? '—'}</td>
+                      <td className="py-3 pr-4 text-black/55">
+                        {r.actor_name?.trim() || r.actor_email || '—'}
+                      </td>
                       <td className="py-3 pr-4 capitalize text-black/45">
                         {r.actor_role ?? '—'}
                       </td>

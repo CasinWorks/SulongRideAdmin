@@ -12,6 +12,7 @@ import {
   auditSummaryFareRates,
   auditSummaryLeaveReview,
   auditSummaryOperatorAction,
+  auditSummaryTeamApproval,
   auditSummaryUpdatedFareSchedule,
 } from '../lib/auditSummary'
 import { driverDisplayName, sameDay, tripDay } from '../lib/format'
@@ -121,16 +122,23 @@ export async function setOperatorApproval(
     .eq('id', operatorId)
     .maybeSingle()
 
+  const targetEmail = target?.email ?? operatorId
+  const actionByStatus = {
+    approved: 'operator.team.approve',
+    revoked: 'operator.team.revoke',
+    pending: 'operator.team.mark_pending',
+  } as const
+
   await logAudit({
-    action: 'operator.approval',
+    action: actionByStatus[status],
     entityType: 'operators',
     entityId: operatorId,
-    summary: auditSummaryOperatorAction(
-      'Operator approval updated',
-      target?.email ?? operatorId,
+    summary: auditSummaryTeamApproval(targetEmail, status),
+    metadata: {
       status,
-    ),
-    metadata: { status, email: target?.email },
+      email: target?.email,
+      full_name: target?.full_name,
+    },
   })
 }
 

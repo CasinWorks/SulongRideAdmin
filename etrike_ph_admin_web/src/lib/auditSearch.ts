@@ -8,7 +8,13 @@ export function endOfDayIso(dateStr: string): string {
 export function matchesAuditSearch(row: AuditLogRow, search: string): boolean {
   const q = search.trim().toLowerCase()
   if (!q) return true
-  const haystack = [row.summary, row.action, row.actor_email ?? '', row.entity_id ?? '']
+  const haystack = [
+    row.summary,
+    row.action,
+    row.actor_email ?? '',
+    row.actor_name ?? '',
+    row.entity_id ?? '',
+  ]
     .join(' ')
     .toLowerCase()
   return haystack.includes(q)

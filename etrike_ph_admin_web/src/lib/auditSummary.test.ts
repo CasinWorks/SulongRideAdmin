@@ -3,6 +3,8 @@ import {
   auditSummaryFareRates,
   auditSummaryLeaveReview,
   auditSummaryOperatorAction,
+  auditSummaryTeamApproval,
+  auditSummaryTeamInvite,
   auditSummaryUpdatedFareSchedule,
   auditSummaryDriverApproval,
   sanitizeAuditText,
@@ -66,5 +68,22 @@ describe('auditSummaryDriverApproval', () => {
 describe('auditSummaryLeaveReview', () => {
   it('includes sanitized status', () => {
     expect(auditSummaryLeaveReview('rejected')).toBe('Leave request rejected')
+  })
+})
+
+describe('auditSummaryTeamApproval', () => {
+  it('describes team approval changes', () => {
+    expect(auditSummaryTeamApproval('ops@example.com', 'approved')).toBe(
+      'Team member approved — ops@example.com',
+    )
+    expect(auditSummaryTeamApproval('ops@example.com', 'revoked')).toContain('revoked')
+  })
+})
+
+describe('auditSummaryTeamInvite', () => {
+  it('describes invite lifecycle', () => {
+    expect(auditSummaryTeamInvite('send', 'ops@example.com', 'admin')).toContain('Team invite sent')
+    expect(auditSummaryTeamInvite('revoke', 'ops@example.com')).toContain('revoked')
+    expect(auditSummaryTeamInvite('accept', 'ops@example.com')).toContain('accepted')
   })
 })

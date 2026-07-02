@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fetchAuditLogs, fetchAuditLogsForDriver, logAudit } from './audit'
 
 const mockFrom = vi.fn()
+const mockRpc = vi.fn()
 const mockAuthGetUser = vi.fn()
 
 vi.mock('../lib/supabase', () => ({
@@ -10,6 +11,7 @@ vi.mock('../lib/supabase', () => ({
       getUser: () => mockAuthGetUser(),
     },
     from: (...args: unknown[]) => mockFrom(...args),
+    rpc: (...args: unknown[]) => mockRpc(...args),
   },
 }))
 
@@ -32,18 +34,22 @@ describe('audit service', () => {
   it('skips logAudit when no user', async () => {
     mockAuthGetUser.mockResolvedValue({ data: { user: null } })
     await logAudit({ action: 'test', summary: 'Test' })
-    expect(mockFrom).not.toHaveBeenCalled()
+    expect(mockRpc).not.toHaveBeenCalled()
   })
 
-  it('inserts audit log for signed-in operator', async () => {
+  it('inserts audit log via RPC for signed-in operator', async () => {
     mockAuthGetUser.mockResolvedValue({ data: { user: { id: 'u1', email: 'ops@example.com' } } })
-    mockFrom
-      .mockReturnValueOnce(chain({ data: { role: 'admin' }, error: null }))
-      .mockReturnValueOnce(chain({ error: null }))
+    mockRpc.mockResolvedValue({ data: 'log-id', error: null })
 
     await logAudit({ action: 'auth.sign_in', summary: 'Signed in' })
-    expect(mockFrom).toHaveBeenCalledWith('operators')
-    expect(mockFrom).toHaveBeenCalledWith('audit_logs')
+    expect(mockRpc).toHaveBeenCalledWith('insert_audit_log', {
+      p_action: 'auth.sign_in',
+      p_summary: 'Signed in',
+      p_entity_type: null,
+      p_entity_id: null,
+      p_metadata: {},
+      p_app_source: 'admin',
+    })
   })
 
   it('fetches audit logs with filters', async () => {

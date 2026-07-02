@@ -43,3 +43,29 @@ export function auditSummaryDriverApproval(status: string): string {
 export function auditSummaryLeaveReview(status: string): string {
   return `Leave request ${sanitizeAuditText(status, 32)}`
 }
+
+export function auditSummaryTeamApproval(
+  targetEmail: string,
+  status: 'approved' | 'revoked' | 'pending',
+): string {
+  const email = sanitizeAuditText(targetEmail)
+  if (status === 'approved') return `Team member approved — ${email}`
+  if (status === 'revoked') return `Team member revoked — ${email}`
+  return `Team member marked pending — ${email}`
+}
+
+export function auditSummaryTeamInvite(
+  action: 'send' | 'revoke' | 'accept',
+  email: string,
+  role?: string,
+): string {
+  const safeEmail = sanitizeAuditText(email)
+  if (action === 'send') {
+    const safeRole = role ? sanitizeAuditText(role, 32) : ''
+    return safeRole
+      ? `Team invite sent — ${safeEmail} (${safeRole})`
+      : `Team invite sent — ${safeEmail}`
+  }
+  if (action === 'revoke') return `Team invite revoked — ${safeEmail}`
+  return `Team invite accepted — ${safeEmail}`
+}

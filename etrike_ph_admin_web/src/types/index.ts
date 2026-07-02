@@ -101,6 +101,7 @@ export type AuditLogRow = {
   id: string
   actor_id: string | null
   actor_email: string | null
+  actor_name: string | null
   actor_role: string | null
   action: string
   entity_type: string | null

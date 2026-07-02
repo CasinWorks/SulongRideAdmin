@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { throwSupabaseError } from '../lib/supabaseError'
+import { auditSummaryTeamInvite } from '../lib/auditSummary'
 import { logAudit } from './audit'
 import type { OperatorInvitePreview, OperatorInviteRow, OperatorRole } from '../types'
 
@@ -56,10 +57,10 @@ export async function createOperatorInvite(
   const invite = mapInvite(data as Record<string, unknown>)
 
   await logAudit({
-    action: 'operator.invite.create',
+    action: 'operator.team.invite.send',
     entityType: 'operator_invites',
     entityId: invite.id,
-    summary: `Operator invite sent to ${normalized}`,
+    summary: auditSummaryTeamInvite('send', normalized, role),
     metadata: { email: normalized, role, token: invite.token },
   })
 
@@ -87,10 +88,10 @@ export async function revokeOperatorInvite(inviteId: string): Promise<void> {
   if (error) throw error
 
   await logAudit({
-    action: 'operator.invite.revoke',
+    action: 'operator.team.invite.revoke',
     entityType: 'operator_invites',
     entityId: inviteId,
-    summary: `Operator invite revoked for ${String(before.email)}`,
+    summary: auditSummaryTeamInvite('revoke', String(before.email)),
     metadata: { email: before.email },
   })
 }
@@ -116,12 +117,15 @@ export async function fetchOperatorInviteByToken(
 }
 
 export async function claimOperatorInvite(token: string): Promise<void> {
+  const preview = await fetchOperatorInviteByToken(token)
+
   const { error } = await supabase.rpc('claim_operator_invite', { p_token: token })
   if (error) throw error
 
   await logAudit({
-    action: 'operator.invite.claim',
-    summary: 'Operator invite accepted',
-    metadata: { token },
+    action: 'operator.team.invite.accept',
+    entityType: 'operator_invites',
+    summary: auditSummaryTeamInvite('accept', preview?.email ?? 'unknown'),
+    metadata: { token, email: preview?.email, role: preview?.role },
   })
 }
