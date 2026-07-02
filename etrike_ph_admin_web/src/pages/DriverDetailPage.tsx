@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { Pencil } from 'lucide-react'
 import {
   acknowledgeTripReview,
   fetchDriverProfile,
   setDriverApproval,
+  updateDriverName,
 } from '../services/admin'
 import { formatDateTime, formatPeso } from '../lib/format'
+import { NameFormModal } from '../components/NameFormModal'
 import {
   ErrorState,
   GhostButton,
@@ -23,6 +26,8 @@ export function DriverDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [editNameOpen, setEditNameOpen] = useState(false)
+  const [nameBusy, setNameBusy] = useState(false)
 
   function load() {
     if (!id) return
@@ -63,6 +68,20 @@ export function DriverDetailPage() {
     }
   }
 
+  async function handleSaveDriverName(name: string) {
+    if (!id) return
+    setNameBusy(true)
+    try {
+      await updateDriverName(id, name)
+      setEditNameOpen(false)
+      load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Name update failed')
+    } finally {
+      setNameBusy(false)
+    }
+  }
+
   if (!id) return <ErrorState message="Missing driver id" />
   if (loading) return <LoadingState />
   if (error) return <ErrorState message={error} />
@@ -82,6 +101,14 @@ export function DriverDetailPage() {
             <span className="rounded-full bg-admin-bg px-2.5 py-0.5 text-xs text-black/55">
               {profile.statusLabel}
             </span>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <GhostButton disabled={busy} onClick={() => setEditNameOpen(true)}>
+              <span className="inline-flex items-center gap-1.5">
+                <Pencil size={14} />
+                Edit name
+              </span>
+            </GhostButton>
           </div>
         </div>
         <div className="flex gap-2">
@@ -182,6 +209,16 @@ export function DriverDetailPage() {
           </ul>
         )}
       </PanelCard>
+
+      <NameFormModal
+        open={editNameOpen}
+        busy={nameBusy}
+        title="Edit driver name"
+        description={`Update the display name for ${profile.email}.`}
+        initialName={profile.fullName}
+        onSave={handleSaveDriverName}
+        onClose={() => setEditNameOpen(false)}
+      />
     </div>
   )
 }

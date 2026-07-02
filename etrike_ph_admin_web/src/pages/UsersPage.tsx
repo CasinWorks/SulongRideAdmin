@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Copy, MailPlus } from 'lucide-react'
+import { Copy, MailPlus, Pencil } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
-import { listOperators, setOperatorApproval, setOperatorRole } from '../services/admin'
+import { operatorDisplayName } from '../lib/displayName'
+import {
+  listOperators,
+  setOperatorApproval,
+  setOperatorRole,
+  updateOperatorNameByAdmin,
+} from '../services/admin'
 import {
   createOperatorInvite,
   listOperatorInvites,
@@ -24,14 +30,13 @@ import {
   StatusPill,
 } from '../components/ui/adminPageUi'
 import { adminInputCls } from '../components/ui/AdminUi'
+import { NameFormModal } from '../components/NameFormModal'
 
 const ROLES: OperatorRole[] = ['admin', 'viewer', 'super_admin']
 const INVITE_ROLES: OperatorRole[] = ['viewer', 'admin', 'super_admin']
 
 function operatorName(op: OperatorRow): string {
-  const name = op.full_name?.trim()
-  if (name) return name
-  return op.email.split('@')[0] || 'Operator'
+  return operatorDisplayName(op)
 }
 
 function inviteStatusClass(status: OperatorInviteRow['status']): string {
@@ -42,7 +47,7 @@ function inviteStatusClass(status: OperatorInviteRow['status']): string {
 }
 
 export function UsersPage() {
-  const { isSuperAdmin } = useAuth()
+  const { isSuperAdmin, isAdmin } = useAuth()
   const [operators, setOperators] = useState<OperatorRow[]>([])
   const [invites, setInvites] = useState<OperatorInviteRow[]>([])
   const [filter, setFilter] = useState<OperatorApprovalStatus | 'all'>('all')
@@ -53,10 +58,12 @@ export function UsersPage() {
   const [inviteRole, setInviteRole] = useState<OperatorRole>('viewer')
   const [inviteBusy, setInviteBusy] = useState(false)
   const [copiedToken, setCopiedToken] = useState<string | null>(null)
+  const [editOperator, setEditOperator] = useState<OperatorRow | null>(null)
+  const [nameBusy, setNameBusy] = useState(false)
 
   const load = useCallback(() => {
     setLoading(true)
-    const teamPromise = isSuperAdmin
+    const teamPromise = isAdmin
       ? filter === 'all'
         ? listOperators()
         : listOperators(filter)
@@ -69,7 +76,7 @@ export function UsersPage() {
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load team'))
       .finally(() => setLoading(false))
-  }, [filter, isSuperAdmin])
+  }, [filter, isAdmin])
 
   useEffect(() => {
     load()
@@ -112,6 +119,20 @@ export function UsersPage() {
       setError(err instanceof Error ? err.message : 'Could not send invite')
     } finally {
       setInviteBusy(false)
+    }
+  }
+
+  async function handleSaveOperatorName(name: string) {
+    if (!editOperator) return
+    setNameBusy(true)
+    try {
+      await updateOperatorNameByAdmin(editOperator.id, name)
+      setEditOperator(null)
+      load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Name update failed')
+    } finally {
+      setNameBusy(false)
     }
   }
 
@@ -239,27 +260,30 @@ export function UsersPage() {
         )}
       </PanelCard>
 
-      {isSuperAdmin ? (
+      {isAdmin ? (
         <PanelCard
-          title="Team access"
+          title="Team members"
           action={
-            <div className="flex flex-wrap gap-2">
-              {(['all', 'pending', 'approved', 'revoked'] as const).map((value) => (
-                <GhostButton
-                  key={value}
-                  onClick={() => setFilter(value)}
-                  disabled={filter === value}
-                >
-                  {value === 'all' ? 'All' : value}
-                </GhostButton>
-              ))}
-            </div>
+            isSuperAdmin ? (
+              <div className="flex flex-wrap gap-2">
+                {(['all', 'pending', 'approved', 'revoked'] as const).map((value) => (
+                  <GhostButton
+                    key={value}
+                    onClick={() => setFilter(value)}
+                    disabled={filter === value}
+                  >
+                    {value === 'all' ? 'All' : value}
+                  </GhostButton>
+                ))}
+              </div>
+            ) : null
           }
         >
           <p className="mb-4 text-sm text-black/55">
-            Approve or revoke operator access and assign roles. Driver app accounts are blocked
-            from this dashboard.
-            {pendingCount > 0 ? (
+            {isSuperAdmin
+              ? 'Approve or revoke operator access, assign roles, and edit display names.'
+              : 'Edit operator display names. Approval and roles are managed by super admins.'}
+            {isSuperAdmin && pendingCount > 0 ? (
               <span className="mt-1 block font-medium text-amber-700">
                 {pendingCount} user{pendingCount === 1 ? '' : 's'} waiting for approval.
               </span>
@@ -281,42 +305,55 @@ export function UsersPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusPill status={op.approval_status} />
-                    <select
-                      className="rounded-xl border border-admin-border bg-white px-3 py-2 text-sm"
-                      value={op.role}
+                    <GhostButton
                       disabled={busyId === op.id}
-                      onChange={(e) =>
-                        void handleRoleChange(op.id, e.target.value as OperatorRole)
-                      }
+                      onClick={() => setEditOperator(op)}
                     >
-                      {ROLES.map((role) => (
-                        <option key={role} value={role}>
-                          {role.replace('_', ' ')}
-                        </option>
-                      ))}
-                    </select>
-                    {op.approval_status !== 'approved' ? (
-                      <PrimaryButton
-                        disabled={busyId === op.id}
-                        onClick={() => void handleApproval(op.id, 'approved')}
-                      >
-                        Approve
-                      </PrimaryButton>
-                    ) : (
-                      <GhostButton
-                        disabled={busyId === op.id}
-                        onClick={() => void handleApproval(op.id, 'revoked')}
-                      >
-                        Revoke
-                      </GhostButton>
-                    )}
-                    {op.approval_status === 'revoked' ? (
-                      <GhostButton
-                        disabled={busyId === op.id}
-                        onClick={() => void handleApproval(op.id, 'pending')}
-                      >
-                        Mark pending
-                      </GhostButton>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Pencil size={14} />
+                        Edit name
+                      </span>
+                    </GhostButton>
+                    {isSuperAdmin ? (
+                      <>
+                        <select
+                          className="rounded-xl border border-admin-border bg-white px-3 py-2 text-sm"
+                          value={op.role}
+                          disabled={busyId === op.id}
+                          onChange={(e) =>
+                            void handleRoleChange(op.id, e.target.value as OperatorRole)
+                          }
+                        >
+                          {ROLES.map((role) => (
+                            <option key={role} value={role}>
+                              {role.replace('_', ' ')}
+                            </option>
+                          ))}
+                        </select>
+                        {op.approval_status !== 'approved' ? (
+                          <PrimaryButton
+                            disabled={busyId === op.id}
+                            onClick={() => void handleApproval(op.id, 'approved')}
+                          >
+                            Approve
+                          </PrimaryButton>
+                        ) : (
+                          <GhostButton
+                            disabled={busyId === op.id}
+                            onClick={() => void handleApproval(op.id, 'revoked')}
+                          >
+                            Revoke
+                          </GhostButton>
+                        )}
+                        {op.approval_status === 'revoked' ? (
+                          <GhostButton
+                            disabled={busyId === op.id}
+                            onClick={() => void handleApproval(op.id, 'pending')}
+                          >
+                            Mark pending
+                          </GhostButton>
+                        ) : null}
+                      </>
                     ) : null}
                   </div>
                 </li>
@@ -325,6 +362,17 @@ export function UsersPage() {
           )}
         </PanelCard>
       ) : null}
+
+      <NameFormModal
+        key={editOperator?.id ?? 'closed'}
+        open={editOperator != null}
+        busy={nameBusy}
+        title="Edit operator name"
+        description={`Update the display name for ${editOperator?.email ?? 'this operator'}.`}
+        initialName={editOperator ? operatorName(editOperator) : ''}
+        onSave={handleSaveOperatorName}
+        onClose={() => setEditOperator(null)}
+      />
     </div>
   )
 }

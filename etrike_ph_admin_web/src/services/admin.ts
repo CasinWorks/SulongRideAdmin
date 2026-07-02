@@ -157,6 +157,56 @@ export async function setOperatorRole(operatorId: string, role: OperatorRole): P
   })
 }
 
+export async function updateOperatorSelfName(fullName: string): Promise<void> {
+  const { error } = await supabase.rpc('update_operator_self_name', {
+    p_full_name: fullName.trim(),
+  })
+  if (error) throwSupabaseError(error, 'Could not update name')
+
+  await logAudit({
+    action: 'operator.profile',
+    entityType: 'operators',
+    summary: 'Operator updated display name',
+    metadata: { full_name: fullName.trim() },
+  })
+}
+
+export async function updateOperatorNameByAdmin(
+  operatorId: string,
+  fullName: string,
+): Promise<void> {
+  const { error } = await supabase.rpc('update_operator_name_by_admin', {
+    p_operator_id: operatorId,
+    p_full_name: fullName.trim(),
+  })
+  if (error) throwSupabaseError(error, 'Could not update operator name')
+
+  await logAudit({
+    action: 'operator.profile',
+    entityType: 'operators',
+    entityId: operatorId,
+    summary: auditSummaryOperatorAction('Operator name updated', operatorId, fullName.trim()),
+    metadata: { full_name: fullName.trim() },
+  })
+}
+
+export async function updateDriverName(driverId: string, fullName: string): Promise<void> {
+  const { error } = await supabase
+    .from('drivers')
+    .update({ full_name: fullName.trim() })
+    .eq('id', driverId)
+
+  if (error) throwSupabaseError(error, 'Could not update driver name')
+
+  await logAudit({
+    action: 'driver.profile',
+    entityType: 'drivers',
+    entityId: driverId,
+    summary: auditSummaryOperatorAction('Driver name updated', driverId, fullName.trim()),
+    metadata: { full_name: fullName.trim() },
+  })
+}
+
 export async function countPendingOperators(): Promise<number> {
   const { count, error } = await supabase
     .from('operators')
