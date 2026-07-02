@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { driverDisplayName, sameDay, tripDay } from '../lib/format'
+import { throwSupabaseError } from '../lib/supabaseError'
 import type {
   AttendanceRow,
   DailyTripCount,
@@ -202,7 +203,7 @@ export async function listDrivers(approvalStatus?: string): Promise<DriverRow[]>
   let query = supabase.from('drivers').select('*')
   if (approvalStatus) query = query.eq('approval_status', approvalStatus)
   const { data, error } = await query.order('created_at', { ascending: false })
-  if (error) throw error
+  if (error) throwSupabaseError(error, 'Failed to load drivers')
   return (data ?? []).map((r) => mapDriver(r as Record<string, unknown>))
 }
 
@@ -339,7 +340,7 @@ export async function listFareSchedules(): Promise<FareSchedule[]> {
     .select('*')
     .order('starts_at', { ascending: false })
 
-  if (error) throw error
+  if (error) throwSupabaseError(error, 'Failed to load fare schedules')
   return (data ?? []).map((r) => mapFareSchedule(r as Record<string, unknown>))
 }
 
@@ -371,7 +372,7 @@ export async function createFareSchedule(params: {
     .select('*')
     .single()
 
-  if (error) throw error
+  if (error) throwSupabaseError(error, 'Failed to create fare schedule')
   const schedule = mapFareSchedule(data as Record<string, unknown>)
   await logAudit({
     action: 'fare.schedule.create',
@@ -416,7 +417,7 @@ export async function updateFareSchedule(
     })
     .eq('id', id)
 
-  if (error) throw error
+  if (error) throwSupabaseError(error, 'Failed to update fare schedule')
   await logAudit({
     action: 'fare.schedule.update',
     entityType: 'fare_schedules',
@@ -432,7 +433,7 @@ export async function deactivateFareSchedule(id: string): Promise<void> {
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq('id', id)
 
-  if (error) throw error
+  if (error) throwSupabaseError(error, 'Failed to deactivate fare schedule')
   await logAudit({
     action: 'fare.schedule.deactivate',
     entityType: 'fare_schedules',

@@ -12,6 +12,7 @@ import {
 } from '../services/admin'
 import type { EffectiveFare, FareConfig, FareSchedule, FareScheduleType } from '../types'
 import { formatDateTime, formatPeso } from '../lib/format'
+import { supabaseErrorMessage } from '../lib/supabaseError'
 import { GhostButton, LoadingState, PanelCard, PrimaryButton } from '../components/ui/AdminUi'
 
 const inputCls =
@@ -49,19 +50,29 @@ function toDatetimeLocal(iso: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-function fromDatetimeLocal(value: string): string {
-  return new Date(value).toISOString()
+function parseDatetimeLocal(value: string): Date | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const [datePart, timePart] = trimmed.split('T')
+  if (!datePart || !timePart) return null
+  const [year, month, day] = datePart.split('-').map(Number)
+  const [hour, minute] = timePart.split(':').map(Number)
+  if ([year, month, day, hour, minute].some((n) => Number.isNaN(n))) return null
+  const parsed = new Date(year, month - 1, day, hour, minute, 0, 0)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
 }
 
-const emptyForm = {
-  label: '',
-  scheduleType: 'discount' as FareScheduleType,
-  base: '40',
-  perKm: '0',
-  minimum: '40',
-  startsAt: '',
-  indefinite: true,
-  endsAt: '',
+function newScheduleForm() {
+  return {
+    label: '',
+    scheduleType: 'discount' as FareScheduleType,
+    base: '40',
+    perKm: '0',
+    minimum: '40',
+    startsAt: toDatetimeLocal(new Date().toISOString()),
+    indefinite: true,
+    endsAt: '',
+  }
 }
 
 export function FarePage() {
@@ -72,10 +83,12 @@ export function FarePage() {
   const [base, setBase] = useState('')
   const [perKm, setPerKm] = useState('')
   const [minimum, setMinimum] = useState('')
-  const [form, setForm] = useState(emptyForm)
+  const [form, setForm] = useState(newScheduleForm)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [scheduleError, setScheduleError] = useState<string | null>(null)
+  const [scheduleMessage, setScheduleMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [scheduleSaving, setScheduleSaving] = useState(false)
@@ -158,23 +171,49 @@ export function FarePage() {
       indefinite: s.ends_at == null,
       endsAt: toDatetimeLocal(s.ends_at),
     })
-    setMessage(null)
-    setError(null)
+    setScheduleMessage(null)
+    setScheduleError(null)
   }
 
   function cancelEdit() {
     setEditingId(null)
-    setForm(emptyForm)
+    setForm(newScheduleForm())
   }
 
   async function handleSaveSchedule() {
-    if (!form.label.trim() || !form.startsAt) {
-      setError('Label and start date are required')
+    setScheduleError(null)
+    setScheduleMessage(null)
+
+    if (!form.label.trim()) {
+      setScheduleError('Label is required')
       return
     }
+
+    const startDate = parseDatetimeLocal(form.startsAt)
+    if (!startDate) {
+      setScheduleError('Start date and time are required')
+      return
+    }
+
+    let endIso: string | null = null
+    if (!form.indefinite) {
+      if (!form.endsAt.trim()) {
+        setScheduleError('End date and time are required unless the schedule is indefinite')
+        return
+      }
+      const endDate = parseDatetimeLocal(form.endsAt)
+      if (!endDate) {
+        setScheduleError('End date and time are invalid')
+        return
+      }
+      if (endDate.getTime() <= startDate.getTime()) {
+        setScheduleError('End must be after start')
+        return
+      }
+      endIso = endDate.toISOString()
+    }
+
     setScheduleSaving(true)
-    setError(null)
-    setMessage(null)
     try {
       const payload = {
         label: form.label.trim(),
@@ -182,34 +221,34 @@ export function FarePage() {
         baseFare: Number(form.base),
         perKmRate: Number(form.perKm),
         minimumFare: Number(form.minimum),
-        startsAt: fromDatetimeLocal(form.startsAt),
-        endsAt: form.indefinite ? null : form.endsAt ? fromDatetimeLocal(form.endsAt) : null,
+        startsAt: startDate.toISOString(),
+        endsAt: endIso,
       }
       if (editingId) {
         await updateFareSchedule(editingId, { ...payload, isActive: true })
-        setMessage('Schedule updated')
+        setScheduleMessage('Schedule updated')
       } else {
         await createFareSchedule(payload)
-        setMessage('Schedule created')
+        setScheduleMessage('Schedule created')
       }
       cancelEdit()
       await refresh()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Schedule save failed')
+      setScheduleError(supabaseErrorMessage(e, 'Schedule save failed'))
     } finally {
       setScheduleSaving(false)
     }
   }
 
   async function handleDeactivate(id: string) {
-    setError(null)
+    setScheduleError(null)
     try {
       await deactivateFareSchedule(id)
-      setMessage('Schedule deactivated')
+      setScheduleMessage('Schedule deactivated')
       if (editingId === id) cancelEdit()
       await refresh()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Deactivate failed')
+      setScheduleError(supabaseErrorMessage(e, 'Deactivate failed'))
     }
   }
 
@@ -454,6 +493,10 @@ export function FarePage() {
             </PrimaryButton>
             {editingId ? <GhostButton onClick={cancelEdit}>Cancel</GhostButton> : null}
           </div>
+          {scheduleMessage ? (
+            <p className="mt-4 text-sm text-green-700">{scheduleMessage}</p>
+          ) : null}
+          {scheduleError ? <p className="mt-4 text-sm text-red-700">{scheduleError}</p> : null}
         </div>
       </PanelCard>
     </div>

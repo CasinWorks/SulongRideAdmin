@@ -24,7 +24,13 @@ export async function fetchTodaysBirthdays(): Promise<BirthdayPerson[]> {
 
   if (error) {
     // `date_of_birth` may not exist on older schemas — fail quietly.
-    if (error.message.includes('date_of_birth') || error.code === '42703') return []
+    if (
+      error.code === 'PGRST204' ||
+      error.code === '42703' ||
+      error.message.includes('date_of_birth')
+    ) {
+      return []
+    }
     throw error
   }
 

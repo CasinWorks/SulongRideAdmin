@@ -1,5 +1,17 @@
 import { supabase } from '../lib/supabase'
+import { supabaseErrorMessage } from '../lib/supabaseError'
 import type { AuditLogFilters, AuditLogRow } from '../types'
+
+type AuditActorRole = 'operator' | 'driver' | 'rider' | 'super_admin' | 'admin' | 'viewer'
+
+/** Map operators.role to audit_logs.actor_role (DB check constraint). */
+function auditActorRole(operatorRole: string | null | undefined): AuditActorRole {
+  if (operatorRole === 'super_admin' || operatorRole === 'admin' || operatorRole === 'viewer') {
+    return operatorRole
+  }
+  if (operatorRole === 'driver' || operatorRole === 'rider') return operatorRole
+  return 'operator'
+}
 
 export async function logAudit(params: {
   action: string
@@ -13,32 +25,28 @@ export async function logAudit(params: {
   } = await supabase.auth.getUser()
   if (!user) return
 
-  let actorRole = 'operator'
-  try {
-    const { data: op } = await supabase
-      .from('operators')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle()
-    if (op?.role) actorRole = op.role as string
-  } catch {
-    /* optional */
-  }
+  let actorRole: AuditActorRole = 'operator'
+  const { data: op } = await supabase
+    .from('operators')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+  if (op?.role) actorRole = auditActorRole(op.role as string)
 
-  try {
-    await supabase.from('audit_logs').insert({
-      actor_id: user.id,
-      actor_role: actorRole,
-      actor_email: user.email,
-      action: params.action,
-      entity_type: params.entityType ?? null,
-      entity_id: params.entityId ?? null,
-      summary: params.summary,
-      metadata: params.metadata ?? {},
-      app_source: 'admin',
-    })
-  } catch {
-    // Never block primary action if audit fails.
+  const { error } = await supabase.from('audit_logs').insert({
+    actor_id: user.id,
+    actor_role: actorRole,
+    actor_email: user.email,
+    action: params.action,
+    entity_type: params.entityType ?? null,
+    entity_id: params.entityId ?? null,
+    summary: params.summary,
+    metadata: params.metadata ?? {},
+    app_source: 'admin',
+  })
+
+  if (error) {
+    console.warn('Audit log insert failed:', supabaseErrorMessage(error, error.message))
   }
 }
 
@@ -85,7 +93,7 @@ export async function fetchAuditLogs(
   if (filters.actorRole) query = query.eq('actor_role', filters.actorRole)
 
   const { data, error } = await query
-  if (error) throw error
+  if (error) throw new Error(supabaseErrorMessage(error, 'Failed to load audit logs'))
 
   let rows = (data ?? []) as AuditLogRow[]
   if (filters.search?.trim()) {
@@ -98,15 +106,34 @@ export async function fetchAuditLogsForDriver(
   driverId: string,
   limit = 25,
 ): Promise<AuditLogRow[]> {
-  const { data, error } = await supabase
-    .from('audit_logs')
-    .select('*')
-    .or(
-      `and(entity_type.eq.drivers,entity_id.eq.${driverId}),actor_id.eq.${driverId}`,
-    )
-    .order('created_at', { ascending: false })
-    .limit(limit)
+  const [asEntity, asActor] = await Promise.all([
+    supabase
+      .from('audit_logs')
+      .select('*')
+      .eq('entity_type', 'drivers')
+      .eq('entity_id', driverId)
+      .order('created_at', { ascending: false })
+      .limit(limit),
+    supabase
+      .from('audit_logs')
+      .select('*')
+      .eq('actor_id', driverId)
+      .order('created_at', { ascending: false })
+      .limit(limit),
+  ])
 
-  if (error) return []
-  return (data ?? []) as AuditLogRow[]
+  const error = asEntity.error ?? asActor.error
+  if (error) {
+    console.warn('Driver audit logs:', supabaseErrorMessage(error, error.message))
+    return []
+  }
+
+  const merged = new Map<string, AuditLogRow>()
+  for (const row of [...(asEntity.data ?? []), ...(asActor.data ?? [])] as AuditLogRow[]) {
+    merged.set(row.id, row)
+  }
+
+  return [...merged.values()]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, limit)
 }
