@@ -57,7 +57,8 @@ export function DriversPage() {
               <th className="pb-3 pr-4 font-medium">Status</th>
               <th className="pb-3 pr-4 font-medium">Plate</th>
               <th className="pb-3 pr-4 font-medium">Trips (7d)</th>
-              <th className="pb-3 font-medium">Joined</th>
+              <th className="pb-3 pr-4 font-medium">Joined</th>
+              <th className="pb-3 font-medium" />
             </tr>
           </thead>
           <tbody>
@@ -77,7 +78,17 @@ export function DriversPage() {
                 </td>
                 <td className="py-3 pr-4">{d.trike_plate_number ?? '—'}</td>
                 <td className="py-3 pr-4">{weekly[d.id] ?? 0}</td>
-                <td className="py-3">{formatDate(d.created_at)}</td>
+                <td className="py-3 pr-4">{formatDate(d.created_at)}</td>
+                <td className="py-3 text-right">
+                  {d.approval_status === 'pending' ? (
+                    <Link
+                      to={`/drivers/onboarding/${d.id}`}
+                      className="text-sm font-medium text-admin-accent hover:underline"
+                    >
+                      Onboard
+                    </Link>
+                  ) : null}
+                </td>
               </tr>
             ))}
           </tbody>

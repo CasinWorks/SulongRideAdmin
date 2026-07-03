@@ -15,6 +15,7 @@ import {
   X,
   Shield,
   Pencil,
+  ClipboardList,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { operatorDisplayName } from '../../lib/displayName'
@@ -26,6 +27,7 @@ import { PageTransition } from '../ui/AdminMotion'
 const baseNav = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/drivers', label: 'Drivers', icon: Users },
+  { to: '/drivers/onboarding', label: 'Onboarding', icon: ClipboardList },
   { to: '/pending', label: 'Pending', icon: Clock },
   { to: '/approved', label: 'Approved', icon: UserCheck },
   { to: '/revoked', label: 'Revoked', icon: UserX },

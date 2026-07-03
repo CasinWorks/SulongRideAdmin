@@ -72,6 +72,11 @@ export function DriverApprovalPage({
               key={d.id}
               actions={
                 <>
+                  {status === 'pending' ? (
+                    <Link to={`/drivers/onboarding/${d.id}`}>
+                      <GhostButton>Onboard</GhostButton>
+                    </Link>
+                  ) : null}
                   {status !== 'approved' ? (
                     <PrimaryButton
                       disabled={busyId === d.id}
