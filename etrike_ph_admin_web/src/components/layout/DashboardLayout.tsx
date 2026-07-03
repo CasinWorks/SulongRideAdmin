@@ -41,6 +41,20 @@ const teamNav = { to: '/team', label: 'Team', icon: Shield, end: false as const 
 
 type NavItem = (typeof baseNav)[number] | typeof teamNav
 
+function isNavItemActive(to: string, end: boolean | undefined, pathname: string): boolean {
+  if (to === '/drivers/onboarding') {
+    return pathname.startsWith('/drivers/onboarding')
+  }
+  if (to === '/drivers') {
+    return (
+      pathname === '/drivers' ||
+      (pathname.startsWith('/drivers/') && !pathname.startsWith('/drivers/onboarding'))
+    )
+  }
+  if (end) return pathname === to
+  return pathname === to || pathname.startsWith(`${to}/`)
+}
+
 function SidebarBrand({
   displayName,
   onEditName,
@@ -78,6 +92,8 @@ function SidebarNav({
   onNavigate?: () => void
   onSignOut: () => void
 }) {
+  const { pathname } = useLocation()
+
   return (
     <>
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
@@ -87,12 +103,13 @@ function SidebarNav({
             to={to}
             end={end}
             onClick={onNavigate}
-            className={({ isActive }) => {
+            className={() => {
+              const active = isNavItemActive(to, end, pathname)
               const base = [
                 'admin-nav-active flex items-center gap-2.5 rounded-xl px-3 py-2.5',
                 'text-sm font-medium transition-colors duration-200',
               ].join(' ')
-              return isActive
+              return active
                 ? `${base} bg-admin-accent text-white shadow-sm`
                 : `${base} text-black/65 hover:bg-white hover:text-black/87`
             }}
@@ -169,9 +186,8 @@ export function DashboardLayout() {
   const displayName = operator ? operatorDisplayName(operator) : 'Operator'
 
   const currentPage =
-    nav.find((item) =>
-      item.end ? location.pathname === item.to : location.pathname.startsWith(item.to),
-    )?.label ?? 'Admin'
+    nav.find((item) => isNavItemActive(item.to, 'end' in item ? item.end : undefined, location.pathname))
+      ?.label ?? 'Admin'
 
   useEffect(() => {
     setNavOpen(false)
