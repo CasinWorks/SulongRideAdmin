@@ -7,6 +7,9 @@ import {
   setDriverApproval,
   updateDriverName,
 } from '../services/admin'
+import { fetchOnboardingBundle } from '../services/onboarding'
+import { DriverDocumentsPanel } from '../components/onboarding/DriverDocumentsPanel'
+import type { DriverDocumentRow } from '../types/onboarding'
 import { formatDateTime, formatPeso } from '../lib/format'
 import { NameFormModal } from '../components/NameFormModal'
 import {
@@ -23,6 +26,8 @@ import type { DriverProfile } from '../types'
 export function DriverDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [profile, setProfile] = useState<DriverProfile | null>(null)
+  const [documents, setDocuments] = useState<DriverDocumentRow[]>([])
+  const [checklistPercent, setChecklistPercent] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -32,8 +37,12 @@ export function DriverDetailPage() {
   function load() {
     if (!id) return
     setLoading(true)
-    fetchDriverProfile(id)
-      .then(setProfile)
+    Promise.all([fetchDriverProfile(id), fetchOnboardingBundle(id)])
+      .then(([driverProfile, bundle]) => {
+        setProfile(driverProfile)
+        setDocuments(bundle.documents)
+        setChecklistPercent(bundle.checklist_percent)
+      })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load driver'))
       .finally(() => setLoading(false))
   }
@@ -109,6 +118,14 @@ export function DriverDetailPage() {
                 Edit name
               </span>
             </GhostButton>
+            {profile.approvalStatus === 'pending' ? (
+              <Link
+                to={`/drivers/onboarding/${id}`}
+                className="inline-flex items-center rounded-xl border border-admin-border bg-admin-bg px-3 py-2 text-sm font-medium text-black/70 hover:bg-white"
+              >
+                Open onboarding wizard
+              </Link>
+            ) : null}
           </div>
         </div>
         <div className="flex gap-2">
@@ -131,6 +148,12 @@ export function DriverDetailPage() {
         <StatCard label="Trips this month" value={String(profile.tripsThisMonth)} />
         <StatCard label="Total earnings" value={formatPeso(profile.totalEarnings)} />
       </div>
+
+      <DriverDocumentsPanel
+        documents={documents}
+        checklistPercent={checklistPercent}
+        title="Compliance documents"
+      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <PanelCard title="Profile">

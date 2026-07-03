@@ -21,7 +21,6 @@ import {
   DEFAULT_STATION,
   EMPLOYMENT_TYPES,
   ONBOARDING_STEP_LABELS,
-  REQUIRED_DRIVER_DOCUMENTS,
   SHIFT_OPTIONS,
 } from '../lib/onboardingConstants'
 import type { DocumentTypeId } from '../lib/onboardingConstants'
@@ -33,6 +32,10 @@ import {
   PrimaryButton,
 } from '../components/ui/adminPageUi'
 import { adminInputCls } from '../components/ui/AdminUi'
+import {
+  DocumentInlinePreview,
+  DriverDocumentsPanel,
+} from '../components/onboarding/DriverDocumentsPanel'
 
 const WIZARD_STEPS = ONBOARDING_STEP_LABELS.length - 1
 
@@ -84,6 +87,11 @@ function DocumentUploadField({
           ) : (
             <p className="mt-1 text-xs text-black/45">Required</p>
           )}
+          <DocumentInlinePreview
+            docType={docType}
+            fileUrl={existing?.file_url}
+            fileName={existing?.file_name}
+          />
         </div>
         <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-admin-border bg-admin-bg px-3 py-2 text-sm font-medium text-black/70 hover:bg-white">
           <Upload size={16} />
@@ -553,23 +561,8 @@ export function DriverOnboardingPage() {
           {step === 6 ? (
             <div className="space-y-4">
               <p className="text-sm text-black/55">
-                Checklist: <strong>{checklistPercent}%</strong> ({REQUIRED_DRIVER_DOCUMENTS.length}{' '}
-                required documents)
+                Review all uploaded documents below before approving or rejecting this application.
               </p>
-              <ul className="grid gap-2 sm:grid-cols-2">
-                {REQUIRED_DRIVER_DOCUMENTS.map((docType) => {
-                  const doc = docMap.get(docType)
-                  const ok = Boolean(doc?.file_url)
-                  return (
-                    <li
-                      key={docType}
-                      className={`rounded-lg px-3 py-2 text-sm ${ok ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800'}`}
-                    >
-                      {DOCUMENT_LABELS[docType]} — {ok ? 'Uploaded' : 'Missing'}
-                    </li>
-                  )
-                })}
-              </ul>
               <label className="block">
                 <span className="text-sm font-medium text-black/70">Rejection reason (optional)</span>
                 <textarea
@@ -591,6 +584,10 @@ export function DriverOnboardingPage() {
             </div>
           ) : null}
         </PanelCard>
+      ) : null}
+
+      {step >= 2 && activeDriver ? (
+        <DriverDocumentsPanel documents={documents} checklistPercent={checklistPercent} />
       ) : null}
     </div>
   )
