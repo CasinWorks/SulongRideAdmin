@@ -166,71 +166,85 @@ export function DriverOnboardingPage() {
 
     const info = bundle.draft?.personal_info ?? {}
     const emp = bundle.draft?.employment ?? {}
-    const base = driver ?? selectedDriver
     setPersonal({
-      first_name: String(info.first_name ?? base?.full_name?.split(' ')[0] ?? ''),
+      first_name: String(info.first_name ?? driver?.full_name?.split(' ')[0] ?? ''),
       last_name: String(
-        info.last_name ?? base?.full_name?.split(' ').slice(1).join(' ') ?? '',
+        info.last_name ?? driver?.full_name?.split(' ').slice(1).join(' ') ?? '',
       ),
-      contact: String(info.contact ?? base?.phone ?? ''),
-      email: String(info.email ?? base?.email ?? ''),
+      contact: String(info.contact ?? driver?.phone ?? ''),
+      email: String(info.email ?? driver?.email ?? ''),
       emergency_contact: String(
-        info.emergency_contact ?? base?.emergency_contact ?? '',
+        info.emergency_contact ?? driver?.emergency_contact ?? '',
       ),
     })
     setEmployment({
       vehicle_id: String(emp.vehicle_id ?? ''),
-      employment_type: String(emp.type ?? base?.employment_type ?? 'contractual'),
-      shift_schedule: String(emp.shift ?? base?.shift_schedule ?? SHIFT_OPTIONS[0]),
+      employment_type: String(emp.type ?? driver?.employment_type ?? 'contractual'),
+      shift_schedule: String(emp.shift ?? driver?.shift_schedule ?? SHIFT_OPTIONS[0]),
       start_date: String(
-        emp.start_date ?? base?.start_date ?? new Date().toISOString().slice(0, 10),
+        emp.start_date ?? driver?.start_date ?? new Date().toISOString().slice(0, 10),
       ),
-      station: String(emp.station ?? base?.station ?? DEFAULT_STATION),
+      station: String(emp.station ?? driver?.station ?? DEFAULT_STATION),
     })
     if (bundle.draft?.current_step && bundle.draft.current_step > 0) {
       setStep(Math.min(bundle.draft.current_step, WIZARD_STEPS))
     }
-  }, [selectedDriver])
+  }, [])
 
   useEffect(() => {
-    setLoading(true)
-    setError(null)
-    Promise.all([
-      listDrivers('pending'),
-      routeDriverId ? fetchDriver(routeDriverId) : Promise.resolve(null),
-    ])
-      .then(async ([drivers, driver]) => {
+    let cancelled = false
+
+    async function load() {
+      setLoading(true)
+      setError(null)
+      try {
+        const [drivers, driver] = await Promise.all([
+          listDrivers('pending'),
+          routeDriverId ? fetchDriver(routeDriverId) : Promise.resolve(null),
+        ])
+        if (cancelled) return
+
         setPendingDrivers(drivers)
-        if (routeDriverId && driver) {
+
+        if (routeDriverId) {
+          if (!driver) {
+            setSelectedDriver(null)
+            setError('Driver not found or you do not have access.')
+            setStep(0)
+            return
+          }
           setSelectedDriver(driver)
           setStep(1)
           const vehicleRows = await listAvailableVehicles(routeDriverId)
+          if (cancelled) return
           setVehicles(vehicleRows)
           await loadBundle(routeDriverId, driver)
+        } else {
+          setSelectedDriver(null)
+          setStep(0)
         }
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load onboarding'))
-      .finally(() => setLoading(false))
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : 'Failed to load onboarding')
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+    }
   }, [routeDriverId, loadBundle])
 
   useEffect(() => {
     if (!selectedDriverId || step === 0) return
     void listAvailableVehicles(selectedDriverId).then(setVehicles)
-  }, [selectedDriverId, step])
+  }, [selectedDriverId])
 
-  async function startOnboarding(driver: DriverRow) {
-    setSelectedDriver(driver)
-    setStep(1)
-    navigate(`/drivers/onboarding/${driver.id}`, { replace: true })
-    setLoading(true)
-    try {
-      await loadBundle(driver.id, driver)
-      setVehicles(await listAvailableVehicles(driver.id))
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to start onboarding')
-    } finally {
-      setLoading(false)
-    }
+  function startOnboarding(driver: DriverRow) {
+    navigate(`/drivers/onboarding/${driver.id}`)
   }
 
   async function handleSavePersonal() {
@@ -313,6 +327,9 @@ export function DriverOnboardingPage() {
 
   if (loading) return <LoadingState label="Loading onboarding…" />
   if (error && step === 0 && pendingDrivers.length === 0) return <ErrorState message={error} />
+  if (routeDriverId && step >= 1 && !activeDriver) {
+    return <ErrorState message={error ?? 'Driver not found or you do not have access.'} />
+  }
 
   return (
     <div className="space-y-6">
@@ -352,7 +369,7 @@ export function DriverOnboardingPage() {
                       {d.created_at ? new Date(d.created_at).toLocaleDateString() : '—'}
                     </p>
                   </div>
-                  <PrimaryButton onClick={() => void startOnboarding(d)}>Start onboarding</PrimaryButton>
+                  <PrimaryButton onClick={() => startOnboarding(d)}>Start onboarding</PrimaryButton>
                 </li>
               ))}
             </ul>
