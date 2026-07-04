@@ -32,8 +32,8 @@ import {
 import { adminInputCls } from '../components/ui/AdminUi'
 import { NameFormModal } from '../components/NameFormModal'
 
-const ROLES: OperatorRole[] = ['admin', 'viewer', 'super_admin']
-const INVITE_ROLES: OperatorRole[] = ['viewer', 'admin', 'super_admin']
+const ROLES: OperatorRole[] = ['admin', 'viewer', 'hr', 'dispatcher', 'super_admin']
+const INVITE_ROLES: OperatorRole[] = ['viewer', 'hr', 'dispatcher', 'admin', 'super_admin']
 
 function operatorName(op: OperatorRow): string {
   return operatorDisplayName(op)

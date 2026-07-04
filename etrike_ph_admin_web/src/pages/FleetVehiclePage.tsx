@@ -41,7 +41,7 @@ type DriverOption = { id: string; full_name: string; email: string }
 export function FleetVehiclePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { isAdmin } = useAuth()
+  const { isAdmin, canWriteFleet } = useAuth()
   const [vehicle, setVehicle] = useState<FleetVehicleWithDriver | null>(null)
   const [assignments, setAssignments] = useState<VehicleAssignmentRow[]>([])
   const [logs, setLogs] = useState<VehicleMaintenanceLog[]>([])
@@ -215,6 +215,7 @@ export function FleetVehiclePage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <PanelCard title="Unit details">
+          <fieldset disabled={!canWriteFleet} className="min-w-0 border-0 p-0">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="text-sm font-medium text-black/70">Unit number</span>
@@ -270,9 +271,11 @@ export function FleetVehiclePage() {
               </GhostButton>
             ) : null}
           </div>
+          </fieldset>
         </PanelCard>
 
         <PanelCard title="Assign to driver">
+          <fieldset disabled={!canWriteFleet} className="min-w-0 border-0 p-0">
           {vehicle.assigned_driver_id ? (
             <div className="mb-4 rounded-xl bg-admin-bg p-4 text-sm">
               <p className="font-medium">{vehicle.assigned_driver_name}</p>
@@ -326,10 +329,12 @@ export function FleetVehiclePage() {
           <PrimaryButton disabled={busy || !assignDriverId} onClick={() => void handleAssign()}>
             {assignFrom ? 'Schedule assignment' : 'Assign now'}
           </PrimaryButton>
+          </fieldset>
         </PanelCard>
       </div>
 
       <PanelCard title="Maintenance log">
+        <fieldset disabled={!canWriteFleet} className="min-w-0 border-0 p-0">
         <form onSubmit={(e) => void handleMaintenance(e)} className="mb-6 grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="text-sm font-medium text-black/70">Type</span>
@@ -394,6 +399,7 @@ export function FleetVehiclePage() {
             ))}
           </ul>
         )}
+        </fieldset>
       </PanelCard>
 
       <PanelCard title="Assignment history">

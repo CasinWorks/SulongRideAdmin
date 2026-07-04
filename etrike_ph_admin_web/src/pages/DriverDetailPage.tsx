@@ -31,7 +31,7 @@ import type { DriverProfile } from '../types'
 export function DriverDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { isAdmin } = useAuth()
+  const { isAdmin, canWriteDrivers } = useAuth()
   const [profile, setProfile] = useState<DriverProfile | null>(null)
   const [documents, setDocuments] = useState<DriverDocumentRow[]>([])
   const [checklistPercent, setChecklistPercent] = useState(0)
@@ -136,12 +136,14 @@ export function DriverDetailPage() {
             </span>
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <GhostButton disabled={busy} onClick={() => setEditNameOpen(true)}>
-              <span className="inline-flex items-center gap-1.5">
-                <Pencil size={14} />
-                Edit name
-              </span>
-            </GhostButton>
+            {canWriteDrivers ? (
+              <GhostButton disabled={busy} onClick={() => setEditNameOpen(true)}>
+                <span className="inline-flex items-center gap-1.5">
+                  <Pencil size={14} />
+                  Edit name
+                </span>
+              </GhostButton>
+            ) : null}
             {profile.approvalStatus === 'pending' ? (
               <Link
                 to={`/drivers/onboarding/${id}`}
@@ -152,18 +154,20 @@ export function DriverDetailPage() {
             ) : null}
           </div>
         </div>
-        <div className="flex gap-2">
-          {profile.approvalStatus !== 'approved' ? (
-            <PrimaryButton disabled={busy} onClick={() => void handleApproval('approved')}>
-              Approve
-            </PrimaryButton>
-          ) : null}
-          {profile.approvalStatus !== 'rejected' ? (
-            <GhostButton disabled={busy} onClick={() => void handleApproval('rejected')}>
-              Revoke
-            </GhostButton>
-          ) : null}
-        </div>
+        {canWriteDrivers ? (
+          <div className="flex gap-2">
+            {profile.approvalStatus !== 'approved' ? (
+              <PrimaryButton disabled={busy} onClick={() => void handleApproval('approved')}>
+                Approve
+              </PrimaryButton>
+            ) : null}
+            {profile.approvalStatus !== 'rejected' ? (
+              <GhostButton disabled={busy} onClick={() => void handleApproval('rejected')}>
+                Revoke
+              </GhostButton>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -179,9 +183,14 @@ export function DriverDetailPage() {
         title="Compliance documents"
       />
 
-      <DriverTrainingPanel driverId={id} driverName={profile.fullName} />
+      <DriverTrainingPanel driverId={id} driverName={profile.fullName} readOnly={!canWriteDrivers} />
 
-      <DriverVehicleAssignPanel driverId={id} driverName={profile.fullName} onChanged={load} />
+      <DriverVehicleAssignPanel
+        driverId={id}
+        driverName={profile.fullName}
+        onChanged={load}
+        readOnly={!canWriteDrivers}
+      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <PanelCard title="Profile">
@@ -206,7 +215,7 @@ export function DriverDetailPage() {
                 <li key={t.id} className="rounded-xl bg-admin-bg p-3 text-sm">
                   <p className="font-medium">{t.rating}★ — {formatPeso(t.fare)}</p>
                   <p className="text-black/55">{t.review_text ?? 'No comment'}</p>
-                  {!t.review_acknowledged_at ? (
+                  {!t.review_acknowledged_at && canWriteDrivers ? (
                     <button
                       type="button"
                       disabled={busy}
@@ -215,7 +224,7 @@ export function DriverDetailPage() {
                     >
                       Acknowledge review
                     </button>
-                  ) : (
+                  ) : !t.review_acknowledged_at ? null : (
                     <p className="mt-1 text-xs text-green-700">Acknowledged</p>
                   )}
                 </li>

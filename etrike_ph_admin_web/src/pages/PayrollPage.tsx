@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 import {
   cancelCashAdvance,
   createCashAdvance,
@@ -101,6 +102,7 @@ function BreakdownTable({ row }: { row: PayrollPreview | PayrollRecordRow }) {
 }
 
 export function PayrollPage() {
+  const { canWritePayroll } = useAuth()
   const [tab, setTab] = useState<Tab>('records')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -364,6 +366,7 @@ export function PayrollPage() {
                         </span>
                       </td>
                       <td className="py-3">
+                        {canWritePayroll ? (
                         <div className="flex flex-wrap gap-2">
                           {r.status === 'draft' ? (
                             <GhostButton onClick={() => void handleFinalize(r.id)}>
@@ -376,6 +379,9 @@ export function PayrollPage() {
                             </PrimaryButton>
                           ) : null}
                         </div>
+                        ) : (
+                          <span className="text-xs text-black/45">—</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -389,6 +395,7 @@ export function PayrollPage() {
       {tab === 'generate' ? (
         <div className="grid gap-6 lg:grid-cols-2">
           <PanelCard title="Compute payroll">
+            <fieldset disabled={!canWritePayroll} className="min-w-0 border-0 p-0">
             <div className="space-y-4">
               <label className="block text-sm">
                 <span className="text-black/55">Driver</span>
@@ -439,15 +446,18 @@ export function PayrollPage() {
                 {genBusy ? 'Computing…' : 'Preview breakdown'}
               </PrimaryButton>
             </div>
+            </fieldset>
           </PanelCard>
 
           {preview ? (
             <PanelCard
               title="Preview"
               action={
+                canWritePayroll ? (
                 <PrimaryButton disabled={genBusy} onClick={() => void handleSaveDraft()}>
                   Save draft
                 </PrimaryButton>
+                ) : null
               }
             >
               {'open_cash_advance_balance' in preview && preview.open_cash_advance_balance > 0 ? (
@@ -472,6 +482,7 @@ export function PayrollPage() {
       {tab === 'advances' ? (
         <div className="grid gap-6 lg:grid-cols-2">
           <PanelCard title="Issue cash advance">
+            <fieldset disabled={!canWritePayroll} className="min-w-0 border-0 p-0">
             <form className="space-y-4" onSubmit={(e) => void handleCreateAdvance(e)}>
               <label className="block text-sm">
                 <span className="text-black/55">Driver</span>
@@ -511,6 +522,7 @@ export function PayrollPage() {
                 {advBusy ? 'Saving…' : 'Issue advance'}
               </PrimaryButton>
             </form>
+            </fieldset>
           </PanelCard>
 
           <PanelCard title="Open & recent advances">
@@ -527,7 +539,7 @@ export function PayrollPage() {
                         {a.status}
                       </p>
                     </div>
-                    {a.status === 'open' ? (
+                    {a.status === 'open' && canWritePayroll ? (
                       <GhostButton onClick={() => void cancelCashAdvance(a.id).then(loadBase)}>
                         Cancel
                       </GhostButton>
@@ -542,6 +554,7 @@ export function PayrollPage() {
 
       {tab === 'settings' && settingsForm ? (
         <PanelCard title="Statutory deduction config">
+          <fieldset disabled={!canWritePayroll} className="min-w-0 border-0 p-0">
           <form className="space-y-4" onSubmit={(e) => void handleSaveSettings(e)}>
             <p className="text-sm text-black/55">
               Active config: <strong>{settingsForm.name}</strong>. SSS uses monthly salary credit
@@ -675,6 +688,7 @@ export function PayrollPage() {
               {settingsBusy ? 'Saving…' : 'Save deduction settings'}
             </PrimaryButton>
           </form>
+          </fieldset>
         </PanelCard>
       ) : null}
 

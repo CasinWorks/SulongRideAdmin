@@ -14,6 +14,15 @@ import {
   oauthRedirectUrl,
   operatorEmailDomain,
 } from '../lib/operatorAuth'
+import {
+  operatorCanAccessRoute,
+  operatorCanWriteModule,
+  operatorIsAdmin,
+  operatorIsDispatcher,
+  operatorIsHr,
+  operatorIsSuperAdmin,
+  operatorIsViewer,
+} from '../lib/operatorPermissions'
 import { fetchCurrentOperator, isDriverAccount, isOperator } from '../services/admin'
 import { logAudit } from '../services/audit'
 import type { OperatorApprovalStatus, OperatorRole, OperatorRow } from '../types'
@@ -30,6 +39,16 @@ type AuthState = {
   operatorRole: OperatorRole | null
   isSuperAdmin: boolean
   isAdmin: boolean
+  isViewer: boolean
+  isHr: boolean
+  isDispatcher: boolean
+  canWrite: boolean
+  canWriteDrivers: boolean
+  canWriteFleet: boolean
+  canWriteHr: boolean
+  canWritePayroll: boolean
+  canWriteFare: boolean
+  canAccessRoute: (pathname: string) => boolean
   emailAllowed: boolean
   signIn: (email: string, password: string) => Promise<void>
   signInWithGoogle: (returnPath?: string) => Promise<void>
@@ -51,10 +70,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const operatorStatus: OperatorApprovalStatus | 'none' =
     operator?.approval_status ?? 'none'
   const operatorRole = operator?.role ?? null
-  const isSuperAdmin = operator?.approval_status === 'approved' && operator.role === 'super_admin'
-  const isAdmin =
-    operator?.approval_status === 'approved' &&
-    (operator.role === 'super_admin' || operator.role === 'admin')
+  const isSuperAdmin = operatorIsSuperAdmin(operatorRole, operatorStatus)
+  const isAdmin = operatorIsAdmin(operatorRole, operatorStatus)
+  const isViewer = operatorIsViewer(operatorRole, operatorStatus)
+  const isHr = operatorIsHr(operatorRole, operatorStatus)
+  const isDispatcher = operatorIsDispatcher(operatorRole, operatorStatus)
+  const canWriteDrivers = operatorCanWriteModule('drivers', operatorRole, operatorStatus)
+  const canWriteFleet = operatorCanWriteModule('fleet', operatorRole, operatorStatus)
+  const canWriteHr = operatorCanWriteModule('hr', operatorRole, operatorStatus)
+  const canWritePayroll = operatorCanWriteModule('payroll', operatorRole, operatorStatus)
+  const canWriteFare = operatorCanWriteModule('fare', operatorRole, operatorStatus)
+  const canWrite = isAdmin
+
+  const canAccessRoute = useCallback(
+    (pathname: string) => operatorCanAccessRoute(pathname, operatorRole, operatorStatus),
+    [operatorRole, operatorStatus],
+  )
 
   const refreshOperator = useCallback(async () => {
     if (!session?.user || !isEmailAllowedForOperator(session.user.email)) {
@@ -143,6 +174,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     operatorRole,
     isSuperAdmin,
     isAdmin,
+    isViewer,
+    isHr,
+    isDispatcher,
+    canWrite,
+    canWriteDrivers,
+    canWriteFleet,
+    canWriteHr,
+    canWritePayroll,
+    canWriteFare,
+    canAccessRoute,
     emailAllowed,
     signIn,
     signInWithGoogle,

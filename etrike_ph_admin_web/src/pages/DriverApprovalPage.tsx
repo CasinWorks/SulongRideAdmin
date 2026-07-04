@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 import { listDrivers, setDriverApproval } from '../services/admin'
 import type { DriverRow } from '../types'
 import { driverDisplayName, formatDate } from '../lib/format'
@@ -28,6 +29,7 @@ export function DriverApprovalPage({
   approveLabel = 'Approve',
   rejectLabel = 'Reject',
 }: Props) {
+  const { canWriteDrivers } = useAuth()
   const [drivers, setDrivers] = useState<DriverRow[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -77,7 +79,7 @@ export function DriverApprovalPage({
                       <GhostButton>Onboard</GhostButton>
                     </Link>
                   ) : null}
-                  {status !== 'approved' ? (
+                  {canWriteDrivers && status !== 'approved' ? (
                     <PrimaryButton
                       disabled={busyId === d.id}
                       onClick={() => void handleApproval(d.id, 'approved')}
@@ -85,7 +87,7 @@ export function DriverApprovalPage({
                       {approveLabel}
                     </PrimaryButton>
                   ) : null}
-                  {status !== 'rejected' ? (
+                  {canWriteDrivers && status !== 'rejected' ? (
                     <GhostButton
                       disabled={busyId === d.id}
                       onClick={() => void handleApproval(d.id, 'rejected')}

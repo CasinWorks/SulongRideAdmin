@@ -6,6 +6,8 @@ describe('auditActorRole', () => {
     expect(auditActorRole('super_admin')).toBe('super_admin')
     expect(auditActorRole('admin')).toBe('admin')
     expect(auditActorRole('viewer')).toBe('viewer')
+    expect(auditActorRole('hr')).toBe('hr')
+    expect(auditActorRole('dispatcher')).toBe('dispatcher')
   })
 
   it('maps mobile roles', () => {

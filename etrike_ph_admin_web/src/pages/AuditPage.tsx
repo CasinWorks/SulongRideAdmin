@@ -5,7 +5,7 @@ import { formatDateTime } from '../lib/format'
 import { ErrorState, GhostButton, LoadingState, PanelCard } from '../components/ui/adminPageUi'
 
 const APP_SOURCES = ['admin', 'driver', 'rider'] as const
-const ACTOR_ROLES = ['super_admin', 'admin', 'viewer', 'operator', 'driver', 'rider'] as const
+const ACTOR_ROLES = ['super_admin', 'admin', 'viewer', 'hr', 'dispatcher', 'operator', 'driver', 'rider'] as const
 
 function defaultDateFrom(): string {
   const d = new Date()

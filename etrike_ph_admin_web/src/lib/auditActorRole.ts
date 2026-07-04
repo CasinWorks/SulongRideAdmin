@@ -1,10 +1,27 @@
-export type AuditActorRole = 'operator' | 'driver' | 'rider' | 'super_admin' | 'admin' | 'viewer'
+export type AuditActorRole =
+  | 'operator'
+  | 'driver'
+  | 'rider'
+  | 'super_admin'
+  | 'admin'
+  | 'viewer'
+  | 'hr'
+  | 'dispatcher'
+
+const KNOWN_ROLES: AuditActorRole[] = [
+  'super_admin',
+  'admin',
+  'viewer',
+  'hr',
+  'dispatcher',
+  'driver',
+  'rider',
+]
 
 /** Map operators.role to audit_logs.actor_role (DB check constraint). */
 export function auditActorRole(operatorRole: string | null | undefined): AuditActorRole {
-  if (operatorRole === 'super_admin' || operatorRole === 'admin' || operatorRole === 'viewer') {
-    return operatorRole
+  if (operatorRole && (KNOWN_ROLES as string[]).includes(operatorRole)) {
+    return operatorRole as AuditActorRole
   }
-  if (operatorRole === 'driver' || operatorRole === 'rider') return operatorRole
   return 'operator'
 }

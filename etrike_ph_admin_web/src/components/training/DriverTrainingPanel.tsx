@@ -19,9 +19,10 @@ import { adminInputCls } from '../ui/AdminUi'
 type Props = {
   driverId: string
   driverName?: string
+  readOnly?: boolean
 }
 
-export function DriverTrainingPanel({ driverId, driverName }: Props) {
+export function DriverTrainingPanel({ driverId, driverName, readOnly = false }: Props) {
   const [training, setTraining] = useState<DriverTrainingRow | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -108,14 +109,14 @@ export function DriverTrainingPanel({ driverId, driverName }: Props) {
             <select
               className={`${adminInputCls} mt-1`}
               value={training.mode}
-              disabled={busy || training.status === 'completed'}
+              disabled={readOnly || busy || training.status === 'completed'}
               onChange={(e) => void handleModeChange(e.target.value as TrainingMode)}
             >
               <option value="online">Online (app module + quiz)</option>
               <option value="onsite">Onsite (manual attendance)</option>
             </select>
           </label>
-          {training.mode === 'onsite' && training.status !== 'completed' ? (
+          {training.mode === 'onsite' && training.status !== 'completed' && !readOnly ? (
             <div className="rounded-xl border border-admin-border bg-admin-bg/40 p-4">
               <p className="text-sm text-black/55">
                 After the driver attends the onsite session, mark completion below.

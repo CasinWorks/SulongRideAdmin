@@ -26,9 +26,12 @@ Run in **SQL Editor** for each Supabase project you test against. Order matters 
 | 4 | `fix_fleet_management.sql` | Fleet CRUD + unit assignment |
 | 5 | `fix_payroll.sql` | Payroll + deduction config |
 | 6 | `fix_admin_delete_records.sql` | Admin delete driver / fleet RPCs |
-| 7 | `fix_trips_rls.sql` | Book / accept trips |
-| 7 | `fix_fare_schedules.sql` | Fare on trips |
-| 8 | `fix_operator_rbac.sql` | Admin operator access |
+| 7 | `fix_app_maintenance.sql` | App maintenance mode |
+| 8 | `fix_trips_rls.sql` | Book / accept trips |
+| 9 | `fix_fare_schedules.sql` | Fare on trips |
+| 10 | `fix_operator_rbac.sql` | Admin operator access |
+| 11 | `fix_operator_rbac_viewer.sql` | Viewer read-only RLS |
+| 12 | `fix_operator_roles_hr_dispatcher.sql` | HR + dispatcher roles |
 
 Optional: `fix_driver_documents_or_cr_optional.sql` (documentation only if OR/CR already optional in app).
 
@@ -55,6 +58,7 @@ Optional: `fix_driver_documents_or_cr_optional.sql` (documentation only if OR/CR
 | D11 | Payroll — generate | Pick driver + period → Preview → Save draft → Finalize → Mark paid | [ ] |
 | D12 | Cash advance | Issue advance → finalize payroll → balance reduced | [ ] |
 | D13 | Audit logs | Trip / payroll / fleet actions appear | [ ] |
+| D14a | Viewer read-only | Login as viewer → banner; approve/payroll/fare disabled; `/maintenance` blocked | [ ] |
 
 ### 1B. Driver app (iPhone 16 — latest build)
 

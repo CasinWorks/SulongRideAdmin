@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useAuth } from '../hooks/useAuth'
 import {
   createFareSchedule,
   deactivateFareSchedule,
@@ -66,6 +67,7 @@ function readScheduleForm(formEl: HTMLFormElement) {
 }
 
 export function FarePage() {
+  const { canWriteFare } = useAuth()
   const [defaultFare, setDefaultFare] = useState<FareConfig | null>(null)
   const [effective, setEffective] = useState<EffectiveFare | null>(null)
   const [initializing, setInitializing] = useState(false)
@@ -316,11 +318,11 @@ export function FarePage() {
         <div className="grid max-w-md gap-4">
           <label className="block">
             <span className="text-sm font-medium">Base fare (₱)</span>
-            <input type="number" value={base} onChange={(e) => setBase(e.target.value)} className={inputCls} />
+            <input type="number" value={base} onChange={(e) => setBase(e.target.value)} className={inputCls} disabled={!canWriteFare} />
           </label>
           <label className="block">
             <span className="text-sm font-medium">Per km rate (₱)</span>
-            <input type="number" value={perKm} onChange={(e) => setPerKm(e.target.value)} className={inputCls} />
+            <input type="number" value={perKm} onChange={(e) => setPerKm(e.target.value)} className={inputCls} disabled={!canWriteFare} />
           </label>
           <label className="block">
             <span className="text-sm font-medium">Minimum fare (₱)</span>
@@ -329,8 +331,10 @@ export function FarePage() {
               value={minimum}
               onChange={(e) => setMinimum(e.target.value)}
               className={inputCls}
+              disabled={!canWriteFare}
             />
           </label>
+          {canWriteFare ? (
           <div className="flex flex-wrap gap-2">
             {!defaultFare ? (
               <PrimaryButton disabled={initializing} onClick={() => void handleInitializeDefault()}>
@@ -341,6 +345,7 @@ export function FarePage() {
               {saving ? 'Saving…' : defaultFare ? 'Save default fare' : 'Save as new default fare'}
             </PrimaryButton>
           </div>
+          ) : null}
         </div>
         {message ? <p className="mt-4 text-sm text-green-700">{message}</p> : null}
         {error ? <p className="mt-4 text-sm text-red-700">{error}</p> : null}
@@ -391,6 +396,7 @@ export function FarePage() {
                         </span>
                       </td>
                       <td className="py-3">
+                        {canWriteFare ? (
                         <div className="flex gap-2">
                           <GhostButton onClick={() => startEdit(s)}>Edit</GhostButton>
                           {s.is_active ? (
@@ -399,6 +405,9 @@ export function FarePage() {
                             </GhostButton>
                           ) : null}
                         </div>
+                        ) : (
+                          <span className="text-xs text-black/45">—</span>
+                        )}
                       </td>
                     </tr>
                   )
@@ -413,6 +422,7 @@ export function FarePage() {
           className="rounded-xl border border-admin-border bg-admin-bg/40 p-4"
           onSubmit={(e) => void handleSaveSchedule(e)}
         >
+          <fieldset disabled={!canWriteFare} className="min-w-0 border-0 p-0">
           <h4 className="mb-3 text-sm font-semibold text-black/80">
             {editingId ? 'Edit schedule' : 'New schedule'}
           </h4>
@@ -518,6 +528,7 @@ export function FarePage() {
             <p className="mt-4 text-sm text-green-700">{scheduleMessage}</p>
           ) : null}
           {scheduleError ? <p className="mt-4 text-sm text-red-700">{scheduleError}</p> : null}
+          </fieldset>
         </form>
       </PanelCard>
     </div>

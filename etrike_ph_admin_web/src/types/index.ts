@@ -1,5 +1,5 @@
 export type OperatorApprovalStatus = 'pending' | 'approved' | 'revoked'
-export type OperatorRole = 'super_admin' | 'admin' | 'viewer'
+export type OperatorRole = 'super_admin' | 'admin' | 'viewer' | 'hr' | 'dispatcher'
 
 export type OperatorRow = {
   id: string

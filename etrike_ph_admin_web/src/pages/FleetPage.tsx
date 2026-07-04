@@ -33,7 +33,7 @@ const emptyForm: VehicleFormInput = {
 }
 
 export function FleetPage() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, canWriteFleet } = useAuth()
   const [vehicles, setVehicles] = useState<FleetVehicleWithDriver[]>([])
   const [statusFilter, setStatusFilter] = useState<VehicleStatus | 'all'>('all')
   const [query, setQuery] = useState('')
@@ -128,10 +128,12 @@ export function FleetPage() {
             register their own plate numbers.
           </p>
         </div>
-        <PrimaryButton onClick={() => setShowAdd(true)}>
-          <Plus size={16} className="mr-1.5 inline" />
-          Add unit
-        </PrimaryButton>
+        {canWriteFleet ? (
+          <PrimaryButton onClick={() => setShowAdd(true)}>
+            <Plus size={16} className="mr-1.5 inline" />
+            Add unit
+          </PrimaryButton>
+        ) : null}
       </div>
 
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
@@ -153,7 +155,7 @@ export function FleetPage() {
         ))}
       </div>
 
-      {showAdd ? (
+      {canWriteFleet && showAdd ? (
         <PanelCard title="New e-trike unit">
           <form onSubmit={(e) => void handleCreate(e)} className="grid gap-4 sm:grid-cols-2">
             <label className="block">
@@ -282,7 +284,7 @@ export function FleetPage() {
                       >
                         Manage
                       </Link>
-                      {v.status !== 'retired' ? (
+                      {canWriteFleet && v.status !== 'retired' ? (
                         <button
                           type="button"
                           disabled={busy}

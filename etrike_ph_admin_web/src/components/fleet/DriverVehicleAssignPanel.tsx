@@ -17,9 +17,15 @@ type Props = {
   driverId: string
   driverName?: string
   onChanged?: () => void
+  readOnly?: boolean
 }
 
-export function DriverVehicleAssignPanel({ driverId, driverName, onChanged }: Props) {
+export function DriverVehicleAssignPanel({
+  driverId,
+  driverName,
+  onChanged,
+  readOnly = false,
+}: Props) {
   const [assigned, setAssigned] = useState<FleetVehicle | null>(null)
   const [available, setAvailable] = useState<FleetVehicle[]>([])
   const [history, setHistory] = useState<VehicleAssignmentRow[]>([])
@@ -119,43 +125,49 @@ export function DriverVehicleAssignPanel({ driverId, driverName, onChanged }: Pr
                 >
                   Open in fleet →
                 </Link>
-                <GhostButton disabled={busy} onClick={() => void handleUnassign()}>
-                  Unassign
-                </GhostButton>
+                {!readOnly ? (
+                  <GhostButton disabled={busy} onClick={() => void handleUnassign()}>
+                    Unassign
+                  </GhostButton>
+                ) : null}
               </div>
             </div>
           ) : (
             <p className="text-sm text-amber-800">No unit assigned yet.</p>
           )}
 
-          <label className="block">
-            <span className="text-sm font-medium text-black/70">Assign unit</span>
-            <select
-              className={adminInputCls}
-              value={vehicleId}
-              onChange={(e) => setVehicleId(e.target.value)}
-            >
-              <option value="">Select available unit…</option>
-              {available.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.unit_number} · {v.plate_number}
-                  {v.model ? ` (${v.model})` : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="text-sm font-medium text-black/70">Schedule from (optional)</span>
-            <input
-              type="datetime-local"
-              className={adminInputCls}
-              value={scheduleFrom}
-              onChange={(e) => setScheduleFrom(e.target.value)}
-            />
-          </label>
-          <PrimaryButton disabled={busy || !vehicleId} onClick={() => void handleAssign()}>
-            {scheduleFrom ? 'Schedule assignment' : 'Assign now'}
-          </PrimaryButton>
+          {!readOnly ? (
+            <>
+              <label className="block">
+                <span className="text-sm font-medium text-black/70">Assign unit</span>
+                <select
+                  className={adminInputCls}
+                  value={vehicleId}
+                  onChange={(e) => setVehicleId(e.target.value)}
+                >
+                  <option value="">Select available unit…</option>
+                  {available.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.unit_number} · {v.plate_number}
+                      {v.model ? ` (${v.model})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-black/70">Schedule from (optional)</span>
+                <input
+                  type="datetime-local"
+                  className={adminInputCls}
+                  value={scheduleFrom}
+                  onChange={(e) => setScheduleFrom(e.target.value)}
+                />
+              </label>
+              <PrimaryButton disabled={busy || !vehicleId} onClick={() => void handleAssign()}>
+                {scheduleFrom ? 'Schedule assignment' : 'Assign now'}
+              </PrimaryButton>
+            </>
+          ) : null}
 
           {history.length > 0 ? (
             <div>

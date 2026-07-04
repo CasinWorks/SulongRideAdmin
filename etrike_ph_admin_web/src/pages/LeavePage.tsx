@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useAuth } from '../hooks/useAuth'
 import { listLeaveRequests, reviewLeaveRequest } from '../services/admin'
 import type { LeaveRow } from '../types'
 import { formatDate, driverDisplayName } from '../lib/format'
@@ -14,6 +15,7 @@ import {
 } from '../components/ui/adminPageUi'
 
 export function LeavePage() {
+  const { canWriteHr } = useAuth()
   const [rows, setRows] = useState<LeaveRow[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -56,20 +58,22 @@ export function LeavePage() {
             <ReviewListRow
               key={r.id}
               actions={
-                <>
-                  <PrimaryButton
-                    disabled={busyId === r.id}
-                    onClick={() => void review(r.id, 'approved')}
-                  >
-                    Approve
-                  </PrimaryButton>
-                  <GhostButton
-                    disabled={busyId === r.id}
-                    onClick={() => void review(r.id, 'rejected')}
-                  >
-                    Reject
-                  </GhostButton>
-                </>
+                canWriteHr ? (
+                  <>
+                    <PrimaryButton
+                      disabled={busyId === r.id}
+                      onClick={() => void review(r.id, 'approved')}
+                    >
+                      Approve
+                    </PrimaryButton>
+                    <GhostButton
+                      disabled={busyId === r.id}
+                      onClick={() => void review(r.id, 'rejected')}
+                    >
+                      Reject
+                    </GhostButton>
+                  </>
+                ) : null
               }
             >
               <p className="font-medium">

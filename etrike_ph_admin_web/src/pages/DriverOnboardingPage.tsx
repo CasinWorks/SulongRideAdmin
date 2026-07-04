@@ -145,7 +145,7 @@ function DocumentUploadField({
 export function DriverOnboardingPage() {
   const { driverId: routeDriverId } = useParams<{ driverId?: string }>()
   const navigate = useNavigate()
-  const { isAdmin } = useAuth()
+  const { isAdmin, canWriteDrivers } = useAuth()
   const [step, setStep] = useState(routeDriverId ? 1 : 0)
   const [selectedDriver, setSelectedDriver] = useState<DriverRow | null>(null)
   const [pendingDrivers, setPendingDrivers] = useState<DriverRow[]>([])
@@ -413,7 +413,9 @@ export function DriverOnboardingPage() {
                       {d.created_at ? new Date(d.created_at).toLocaleDateString() : '—'}
                     </p>
                   </div>
-                  <PrimaryButton onClick={() => startOnboarding(d)}>Start onboarding</PrimaryButton>
+                  {canWriteDrivers ? (
+                    <PrimaryButton onClick={() => startOnboarding(d)}>Start onboarding</PrimaryButton>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -432,6 +434,7 @@ export function DriverOnboardingPage() {
             ) : null
           }
         >
+          <fieldset disabled={!canWriteDrivers} className="min-w-0 border-0 p-0">
           {step === 1 ? (
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -626,6 +629,7 @@ export function DriverOnboardingPage() {
               </div>
             </div>
           ) : null}
+          </fieldset>
         </PanelCard>
       ) : null}
 
@@ -634,7 +638,11 @@ export function DriverOnboardingPage() {
       ) : null}
 
       {activeDriver ? (
-        <DriverTrainingPanel driverId={activeDriver.id} driverName={driverDisplayName(activeDriver)} />
+        <DriverTrainingPanel
+          driverId={activeDriver.id}
+          driverName={driverDisplayName(activeDriver)}
+          readOnly={!canWriteDrivers}
+        />
       ) : null}
 
       {activeDriver ? (
@@ -642,6 +650,7 @@ export function DriverOnboardingPage() {
           driverId={activeDriver.id}
           driverName={driverDisplayName(activeDriver)}
           onChanged={() => void loadBundle(activeDriver.id)}
+          readOnly={!canWriteDrivers}
         />
       ) : null}
 

@@ -20,40 +20,41 @@ import {
   Truck,
   Wallet,
   Construction,
+  type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { operatorDisplayName } from '../../lib/displayName'
+import { operatorNavRoutes } from '../../lib/operatorPermissions'
 import { updateOperatorSelfName } from '../../services/admin'
 import { OperatorNameGate } from '../OperatorNameGate'
 import { NameFormModal } from '../NameFormModal'
+import { RoleAccessBanner } from '../RoleAccessBanner'
 import { PageTransition } from '../ui/AdminMotion'
 
-const baseNav = [
-  { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
-  { to: '/drivers', label: 'Drivers', icon: Users },
-  { to: '/drivers/onboarding', label: 'Onboarding', icon: ClipboardList },
-  { to: '/fleet', label: 'Fleet', icon: Truck },
-  { to: '/training', label: 'Training', icon: GraduationCap },
-  { to: '/pending', label: 'Pending', icon: Clock },
-  { to: '/approved', label: 'Approved', icon: UserCheck },
-  { to: '/revoked', label: 'Revoked', icon: UserX },
-  { to: '/attendance', label: 'Attendance', icon: CalendarDays },
-  { to: '/payroll', label: 'Payroll', icon: Wallet },
-  { to: '/leave', label: 'Leave', icon: Palmtree },
-  { to: '/fare', label: 'Fare', icon: Banknote },
-  { to: '/audit', label: 'Audit logs', icon: ScrollText },
-]
-
-const maintenanceNav = {
-  to: '/maintenance',
-  label: 'Maintenance',
-  icon: Construction,
-  end: false as const,
+const NAV_ICONS: Record<string, LucideIcon> = {
+  '/': LayoutDashboard,
+  '/drivers': Users,
+  '/drivers/onboarding': ClipboardList,
+  '/fleet': Truck,
+  '/training': GraduationCap,
+  '/pending': Clock,
+  '/approved': UserCheck,
+  '/revoked': UserX,
+  '/attendance': CalendarDays,
+  '/payroll': Wallet,
+  '/leave': Palmtree,
+  '/fare': Banknote,
+  '/audit': ScrollText,
+  '/maintenance': Construction,
+  '/team': Shield,
 }
 
-const teamNav = { to: '/team', label: 'Team', icon: Shield, end: false as const }
-
-type NavItem = (typeof baseNav)[number] | typeof teamNav | typeof maintenanceNav
+type NavItem = {
+  to: string
+  label: string
+  icon: LucideIcon
+  end?: boolean
+}
 
 function isNavItemActive(to: string, end: boolean | undefined, pathname: string): boolean {
   if (to === '/drivers/onboarding') {
@@ -192,23 +193,32 @@ function MobileDrawer({
 }
 
 export function DashboardLayout() {
-  const { signOut, isAdmin, operator, refreshOperator } = useAuth()
+  const { signOut, operator, operatorRole, operatorStatus, refreshOperator, canAccessRoute } =
+    useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [navOpen, setNavOpen] = useState(false)
   const [editNameOpen, setEditNameOpen] = useState(false)
   const [nameBusy, setNameBusy] = useState(false)
 
-  const nav: NavItem[] = isAdmin ? [...baseNav, maintenanceNav, teamNav] : baseNav
+  const nav: NavItem[] = operatorNavRoutes(operatorRole, operatorStatus).map((item) => ({
+    ...item,
+    icon: NAV_ICONS[item.to] ?? LayoutDashboard,
+  }))
   const displayName = operator ? operatorDisplayName(operator) : 'Operator'
 
   const currentPage =
-    nav.find((item) => isNavItemActive(item.to, 'end' in item ? item.end : undefined, location.pathname))
-      ?.label ?? 'Admin'
+    nav.find((item) => isNavItemActive(item.to, item.end, location.pathname))?.label ?? 'Admin'
 
   useEffect(() => {
     setNavOpen(false)
   }, [location.pathname])
+
+  useEffect(() => {
+    if (!canAccessRoute(location.pathname)) {
+      navigate('/', { replace: true })
+    }
+  }, [canAccessRoute, location.pathname, navigate])
 
   async function handleSignOut() {
     await signOut()
@@ -273,10 +283,16 @@ export function DashboardLayout() {
                 <h2 className="text-lg font-semibold text-black/87 sm:text-xl">
                   Hi, {displayName.split(' ')[0]}
                 </h2>
+                {operatorRole ? (
+                  <p className="mt-0.5 text-xs capitalize text-black/45">
+                    {operatorRole.replace(/_/g, ' ')} access
+                  </p>
+                ) : null}
               </div>
             </div>
           </header>
           <div className="flex-1 overflow-auto p-4 sm:p-6">
+            <RoleAccessBanner />
             <PageTransition key={location.pathname}>
               <Outlet />
             </PageTransition>
