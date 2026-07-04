@@ -188,6 +188,21 @@ export async function retireVehicle(id: string): Promise<void> {
   await updateVehicle(id, { status: 'retired' })
 }
 
+/** Permanently removes a fleet unit and its assignment/maintenance history. */
+export async function deleteFleetVehiclePermanently(id: string): Promise<void> {
+  const vehicle = await fetchFleetVehicle(id)
+  const { error } = await supabase.rpc('admin_delete_vehicle', {
+    p_vehicle_id: id,
+  })
+  if (error) throwSupabaseError(error, 'Failed to delete fleet unit')
+  await logAudit({
+    action: 'fleet.vehicle.delete',
+    entityType: 'vehicles',
+    entityId: id,
+    summary: `Permanently deleted fleet unit ${vehicle?.unit_number ?? id}`,
+  })
+}
+
 export async function listAvailableVehiclesForDriver(driverId?: string): Promise<FleetVehicle[]> {
   const all = await listFleetVehicles()
   return all.filter(

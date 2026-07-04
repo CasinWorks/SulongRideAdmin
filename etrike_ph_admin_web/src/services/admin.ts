@@ -265,6 +265,42 @@ export async function setDriverApproval(
   })
 }
 
+async function purgeDriverDocumentStorage(driverId: string): Promise<void> {
+  try {
+    const bucket = supabase.storage.from('driver-documents')
+    const { data: docTypes } = await bucket.list(driverId)
+    if (!docTypes?.length) return
+    const paths: string[] = []
+    for (const entry of docTypes) {
+      const folder = `${driverId}/${entry.name}`
+      const { data: files } = await bucket.list(folder)
+      for (const file of files ?? []) {
+        paths.push(`${folder}/${file.name}`)
+      }
+    }
+    if (paths.length) await bucket.remove(paths)
+  } catch {
+    // Best-effort — DB/auth delete still proceeds.
+  }
+}
+
+/** Permanently deletes driver profile, onboarding, auth account, and storage uploads. */
+export async function deleteDriverCompletely(driverId: string): Promise<void> {
+  const driver = await fetchDriver(driverId)
+  await purgeDriverDocumentStorage(driverId)
+  const { error } = await supabase.rpc('admin_delete_driver', {
+    p_driver_id: driverId,
+  })
+  if (error) throwSupabaseError(error, 'Failed to delete driver')
+  await logAudit({
+    action: 'driver.delete',
+    entityType: 'drivers',
+    entityId: driverId,
+    summary: `Permanently deleted driver ${driver ? driverDisplayName(driver) : driverId}`,
+    metadata: { email: driver?.email ?? null },
+  })
+}
+
 export { DEFAULT_FARE } from '../lib/adminMappers'
 
 function hardcodedDefaultEffectiveFare(): EffectiveFare {

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Plus, Wrench } from 'lucide-react'
 import {
   createVehicle,
+  deleteFleetVehiclePermanently,
   listFleetVehicles,
   setVehicleMaintenanceMode,
 } from '../services/fleet'
@@ -18,6 +19,8 @@ import {
   adminSearchInputCls,
 } from '../components/ui/adminPageUi'
 import { adminInputCls } from '../components/ui/AdminUi'
+import { ConfirmPermanentDeleteModal } from '../components/ui/ConfirmPermanentDeleteModal'
+import { useAuth } from '../hooks/useAuth'
 
 const emptyForm: VehicleFormInput = {
   unit_number: '',
@@ -30,6 +33,7 @@ const emptyForm: VehicleFormInput = {
 }
 
 export function FleetPage() {
+  const { isAdmin } = useAuth()
   const [vehicles, setVehicles] = useState<FleetVehicleWithDriver[]>([])
   const [statusFilter, setStatusFilter] = useState<VehicleStatus | 'all'>('all')
   const [query, setQuery] = useState('')
@@ -38,6 +42,9 @@ export function FleetPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [form, setForm] = useState<VehicleFormInput>(emptyForm)
   const [busy, setBusy] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<FleetVehicleWithDriver | null>(null)
+  const [deleteToken, setDeleteToken] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   function load() {
     setLoading(true)
@@ -89,6 +96,22 @@ export function FleetPage() {
       setError(err instanceof Error ? err.message : 'Update failed')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function handleDeleteVehicle() {
+    if (!deleteTarget) return
+    setDeleteBusy(true)
+    setError(null)
+    try {
+      await deleteFleetVehiclePermanently(deleteTarget.id)
+      setDeleteTarget(null)
+      setDeleteToken('')
+      load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setDeleteBusy(false)
     }
   }
 
@@ -270,6 +293,19 @@ export function FleetPage() {
                           {v.status === 'maintenance' ? 'Mark available' : 'Maintenance'}
                         </button>
                       ) : null}
+                      {isAdmin ? (
+                        <button
+                          type="button"
+                          disabled={busy || deleteBusy}
+                          className="text-xs font-medium text-red-700 hover:underline"
+                          onClick={() => {
+                            setDeleteToken('')
+                            setDeleteTarget(v)
+                          }}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
@@ -278,6 +314,30 @@ export function FleetPage() {
           </table>
         </div>
       </PanelCard>
+
+      {deleteTarget ? (
+        <ConfirmPermanentDeleteModal
+          open
+          title="Delete fleet unit permanently?"
+          description={
+            <>
+              This removes unit <strong>{deleteTarget.unit_number}</strong> (
+              {deleteTarget.plate_number}) and all maintenance/assignment history.
+            </>
+          }
+          confirmLabel="Delete unit"
+          confirmToken={deleteTarget.unit_number}
+          tokenLabel={deleteTarget.unit_number}
+          tokenValue={deleteToken}
+          busy={deleteBusy}
+          onTokenChange={setDeleteToken}
+          onConfirm={() => void handleDeleteVehicle()}
+          onClose={() => {
+            setDeleteTarget(null)
+            setDeleteToken('')
+          }}
+        />
+      ) : null}
     </div>
   )
 }

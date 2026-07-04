@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   addMaintenanceLog,
   assignVehicleToDriver,
+  deleteFleetVehiclePermanently,
   fetchFleetVehicle,
   listDriversForAssign,
   listMaintenanceLogs,
@@ -32,11 +33,15 @@ import {
   PrimaryButton,
 } from '../components/ui/adminPageUi'
 import { adminInputCls } from '../components/ui/AdminUi'
+import { ConfirmPermanentDeleteModal } from '../components/ui/ConfirmPermanentDeleteModal'
+import { useAuth } from '../hooks/useAuth'
 
 type DriverOption = { id: string; full_name: string; email: string }
 
 export function FleetVehiclePage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const { isAdmin } = useAuth()
   const [vehicle, setVehicle] = useState<FleetVehicleWithDriver | null>(null)
   const [assignments, setAssignments] = useState<VehicleAssignmentRow[]>([])
   const [logs, setLogs] = useState<VehicleMaintenanceLog[]>([])
@@ -54,6 +59,9 @@ export function FleetVehiclePage() {
     description: '',
     cost: null,
   })
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteToken, setDeleteToken] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   const load = useCallback(() => {
     if (!id) return
@@ -164,6 +172,20 @@ export function FleetVehiclePage() {
       setError(e instanceof Error ? e.message : 'Retire failed')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function handleDeletePermanently() {
+    if (!id) return
+    setDeleteBusy(true)
+    setError(null)
+    try {
+      await deleteFleetVehiclePermanently(id)
+      navigate('/fleet')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Delete failed')
+    } finally {
+      setDeleteBusy(false)
     }
   }
 
@@ -390,6 +412,46 @@ export function FleetVehiclePage() {
           </ul>
         )}
       </PanelCard>
+
+      {isAdmin ? (
+        <PanelCard title="Danger zone">
+          <p className="text-sm text-black/55">
+            Permanently delete unit <strong>{vehicle.unit_number}</strong> — removes assignment
+            history and maintenance logs. Payroll records keep the unit reference cleared. Use
+            &quot;Retire&quot; instead if you only want to take a unit out of service.
+          </p>
+          <button
+            type="button"
+            disabled={busy || deleteBusy}
+            onClick={() => {
+              setDeleteToken('')
+              setDeleteOpen(true)
+            }}
+            className="mt-4 rounded-xl border border-red-300 bg-red-50 px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-100 disabled:opacity-50"
+          >
+            Delete unit permanently
+          </button>
+        </PanelCard>
+      ) : null}
+
+      <ConfirmPermanentDeleteModal
+        open={deleteOpen}
+        title="Delete fleet unit permanently?"
+        description={
+          <>
+            This removes unit <strong>{vehicle.unit_number}</strong> ({vehicle.plate_number}) and
+            all maintenance and assignment history tied to this record.
+          </>
+        }
+        confirmLabel="Delete unit"
+        confirmToken={vehicle.unit_number}
+        tokenLabel={vehicle.unit_number}
+        tokenValue={deleteToken}
+        busy={deleteBusy}
+        onTokenChange={setDeleteToken}
+        onConfirm={() => void handleDeletePermanently()}
+        onClose={() => setDeleteOpen(false)}
+      />
     </div>
   )
 }

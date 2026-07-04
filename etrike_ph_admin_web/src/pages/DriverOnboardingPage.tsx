@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Upload } from 'lucide-react'
-import { listDrivers, fetchDriver } from '../services/admin'
+import { listDrivers, fetchDriver, deleteDriverCompletely } from '../services/admin'
 import {
   approveOnboarding,
   fetchOnboardingBundle,
@@ -38,6 +38,8 @@ import {
 } from '../components/onboarding/DriverDocumentsPanel'
 import { DriverTrainingPanel } from '../components/training/DriverTrainingPanel'
 import { DriverVehicleAssignPanel } from '../components/fleet/DriverVehicleAssignPanel'
+import { ConfirmPermanentDeleteModal } from '../components/ui/ConfirmPermanentDeleteModal'
+import { useAuth } from '../hooks/useAuth'
 
 const WIZARD_STEPS = ONBOARDING_STEP_LABELS.length - 1
 
@@ -143,6 +145,7 @@ function DocumentUploadField({
 export function DriverOnboardingPage() {
   const { driverId: routeDriverId } = useParams<{ driverId?: string }>()
   const navigate = useNavigate()
+  const { isAdmin } = useAuth()
   const [step, setStep] = useState(routeDriverId ? 1 : 0)
   const [selectedDriver, setSelectedDriver] = useState<DriverRow | null>(null)
   const [pendingDrivers, setPendingDrivers] = useState<DriverRow[]>([])
@@ -155,6 +158,9 @@ export function DriverOnboardingPage() {
   const [busy, setBusy] = useState(false)
   const [uploadBusy, setUploadBusy] = useState<DocumentTypeId | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteToken, setDeleteToken] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   const [personal, setPersonal] = useState<PersonalInfoForm>({
     first_name: '',
@@ -340,6 +346,20 @@ export function DriverOnboardingPage() {
       setError(e instanceof Error ? e.message : 'Reject failed')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function handleDeleteDriver() {
+    if (!activeDriver) return
+    setDeleteBusy(true)
+    setError(null)
+    try {
+      await deleteDriverCompletely(activeDriver.id)
+      navigate('/drivers')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Delete failed')
+    } finally {
+      setDeleteBusy(false)
     }
   }
 
@@ -622,6 +642,47 @@ export function DriverOnboardingPage() {
           driverId={activeDriver.id}
           driverName={driverDisplayName(activeDriver)}
           onChanged={() => void loadBundle(activeDriver.id)}
+        />
+      ) : null}
+
+      {isAdmin && activeDriver ? (
+        <PanelCard title="Danger zone">
+          <p className="text-sm text-black/55">
+            Permanently delete this driver record — useful for test accounts or duplicate
+            registrations. Removes login, documents, and onboarding data.
+          </p>
+          <button
+            type="button"
+            disabled={busy || deleteBusy}
+            onClick={() => {
+              setDeleteToken('')
+              setDeleteOpen(true)
+            }}
+            className="mt-4 rounded-xl border border-red-300 bg-red-50 px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-100 disabled:opacity-50"
+          >
+            Delete driver permanently
+          </button>
+        </PanelCard>
+      ) : null}
+
+      {activeDriver ? (
+        <ConfirmPermanentDeleteModal
+          open={deleteOpen}
+          title="Delete driver permanently?"
+          description={
+            <>
+              This removes <strong>{driverDisplayName(activeDriver)}</strong> ({activeDriver.email})
+              from the system entirely.
+            </>
+          }
+          confirmLabel="Delete driver"
+          confirmToken={activeDriver.email}
+          tokenLabel={activeDriver.email}
+          tokenValue={deleteToken}
+          busy={deleteBusy}
+          onTokenChange={setDeleteToken}
+          onConfirm={() => void handleDeleteDriver()}
+          onClose={() => setDeleteOpen(false)}
         />
       ) : null}
     </div>

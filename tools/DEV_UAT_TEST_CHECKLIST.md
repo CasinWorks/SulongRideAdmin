@@ -25,7 +25,8 @@ Run in **SQL Editor** for each Supabase project you test against. Order matters 
 | 3 | `fix_driver_training.sql` | Online training + Online gate |
 | 4 | `fix_fleet_management.sql` | Fleet CRUD + unit assignment |
 | 5 | `fix_payroll.sql` | Payroll + deduction config |
-| 6 | `fix_trips_rls.sql` | Book / accept trips |
+| 6 | `fix_admin_delete_records.sql` | Admin delete driver / fleet RPCs |
+| 7 | `fix_trips_rls.sql` | Book / accept trips |
 | 7 | `fix_fare_schedules.sql` | Fare on trips |
 | 8 | `fix_operator_rbac.sql` | Admin operator access |
 

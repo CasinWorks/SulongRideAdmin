@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Pencil } from 'lucide-react'
 import {
   acknowledgeTripReview,
+  deleteDriverCompletely,
   fetchDriverProfile,
   setDriverApproval,
   updateDriverName,
@@ -11,6 +12,8 @@ import { fetchOnboardingBundle } from '../services/onboarding'
 import { DriverTrainingPanel } from '../components/training/DriverTrainingPanel'
 import { DriverVehicleAssignPanel } from '../components/fleet/DriverVehicleAssignPanel'
 import { DriverDocumentsPanel } from '../components/onboarding/DriverDocumentsPanel'
+import { ConfirmPermanentDeleteModal } from '../components/ui/ConfirmPermanentDeleteModal'
+import { useAuth } from '../hooks/useAuth'
 import type { DriverDocumentRow } from '../types/onboarding'
 import { formatDateTime, formatPeso } from '../lib/format'
 import { NameFormModal } from '../components/NameFormModal'
@@ -27,6 +30,8 @@ import type { DriverProfile } from '../types'
 
 export function DriverDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const { isAdmin } = useAuth()
   const [profile, setProfile] = useState<DriverProfile | null>(null)
   const [documents, setDocuments] = useState<DriverDocumentRow[]>([])
   const [checklistPercent, setChecklistPercent] = useState(0)
@@ -35,6 +40,9 @@ export function DriverDetailPage() {
   const [busy, setBusy] = useState(false)
   const [editNameOpen, setEditNameOpen] = useState(false)
   const [nameBusy, setNameBusy] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteToken, setDeleteToken] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   function load() {
     if (!id) return
@@ -90,6 +98,20 @@ export function DriverDetailPage() {
       setError(e instanceof Error ? e.message : 'Name update failed')
     } finally {
       setNameBusy(false)
+    }
+  }
+
+  async function handleDeleteDriver() {
+    if (!id || !profile) return
+    setDeleteBusy(true)
+    setError(null)
+    try {
+      await deleteDriverCompletely(id)
+      navigate('/drivers')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Delete failed')
+    } finally {
+      setDeleteBusy(false)
     }
   }
 
@@ -239,6 +261,27 @@ export function DriverDetailPage() {
         )}
       </PanelCard>
 
+      {isAdmin ? (
+        <PanelCard title="Danger zone">
+          <p className="text-sm text-black/55">
+            Permanently delete this driver — removes their login, onboarding documents, training
+            record, fleet assignment, and profile. Trip history keeps the driver name blank. This
+            cannot be undone.
+          </p>
+          <button
+            type="button"
+            disabled={busy || deleteBusy}
+            onClick={() => {
+              setDeleteToken('')
+              setDeleteOpen(true)
+            }}
+            className="mt-4 rounded-xl border border-red-300 bg-red-50 px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-100 disabled:opacity-50"
+          >
+            Delete driver permanently
+          </button>
+        </PanelCard>
+      ) : null}
+
       <NameFormModal
         open={editNameOpen}
         busy={nameBusy}
@@ -247,6 +290,25 @@ export function DriverDetailPage() {
         initialName={profile.fullName}
         onSave={handleSaveDriverName}
         onClose={() => setEditNameOpen(false)}
+      />
+
+      <ConfirmPermanentDeleteModal
+        open={deleteOpen}
+        title="Delete driver permanently?"
+        description={
+          <>
+            This removes <strong>{profile.fullName}</strong> ({profile.email}) from Supabase Auth
+            and all driver tables. They will need to register again from scratch.
+          </>
+        }
+        confirmLabel="Delete driver"
+        confirmToken={profile.email}
+        tokenLabel={profile.email}
+        tokenValue={deleteToken}
+        busy={deleteBusy}
+        onTokenChange={setDeleteToken}
+        onConfirm={() => void handleDeleteDriver()}
+        onClose={() => setDeleteOpen(false)}
       />
     </div>
   )
