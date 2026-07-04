@@ -36,6 +36,7 @@ import {
   DocumentInlinePreview,
   DriverDocumentsPanel,
 } from '../components/onboarding/DriverDocumentsPanel'
+import { DriverTrainingPanel } from '../components/training/DriverTrainingPanel'
 
 const WIZARD_STEPS = ONBOARDING_STEP_LABELS.length - 1
 
@@ -609,6 +610,10 @@ export function DriverOnboardingPage() {
 
       {step >= 2 && activeDriver ? (
         <DriverDocumentsPanel documents={documents} checklistPercent={checklistPercent} />
+      ) : null}
+
+      {activeDriver ? (
+        <DriverTrainingPanel driverId={activeDriver.id} driverName={driverDisplayName(activeDriver)} />
       ) : null}
     </div>
   )

@@ -17,6 +17,7 @@ import { AttendancePage } from './pages/AttendancePage'
 import { AuditPage } from './pages/AuditPage'
 import { DriverDetailPage } from './pages/DriverDetailPage'
 import { DriverOnboardingPage } from './pages/DriverOnboardingPage'
+import { TrainingPage } from './pages/TrainingPage'
 import { UsersPage } from './pages/UsersPage'
 import { InviteAcceptPage } from './pages/InviteAcceptPage'
 import { LoadingState, ScreenLoader } from './components/ui/AdminUi'
@@ -88,6 +89,7 @@ function AppRoutes() {
         <Route index element={<OverviewPage />} />
         <Route path="drivers/onboarding" element={<DriverOnboardingPage />} />
         <Route path="drivers/onboarding/:driverId" element={<DriverOnboardingPage />} />
+        <Route path="training" element={<TrainingPage />} />
         <Route path="drivers" element={<DriversPage />} />
         <Route path="drivers/:id" element={<DriverDetailPage />} />
         <Route

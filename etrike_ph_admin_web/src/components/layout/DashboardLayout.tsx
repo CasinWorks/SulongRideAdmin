@@ -16,6 +16,7 @@ import {
   Shield,
   Pencil,
   ClipboardList,
+  GraduationCap,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { operatorDisplayName } from '../../lib/displayName'
@@ -28,6 +29,7 @@ const baseNav = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/drivers', label: 'Drivers', icon: Users },
   { to: '/drivers/onboarding', label: 'Onboarding', icon: ClipboardList },
+  { to: '/training', label: 'Training', icon: GraduationCap },
   { to: '/pending', label: 'Pending', icon: Clock },
   { to: '/approved', label: 'Approved', icon: UserCheck },
   { to: '/revoked', label: 'Revoked', icon: UserX },

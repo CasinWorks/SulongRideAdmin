@@ -8,6 +8,7 @@ import {
   updateDriverName,
 } from '../services/admin'
 import { fetchOnboardingBundle } from '../services/onboarding'
+import { DriverTrainingPanel } from '../components/training/DriverTrainingPanel'
 import { DriverDocumentsPanel } from '../components/onboarding/DriverDocumentsPanel'
 import type { DriverDocumentRow } from '../types/onboarding'
 import { formatDateTime, formatPeso } from '../lib/format'
@@ -154,6 +155,8 @@ export function DriverDetailPage() {
         checklistPercent={checklistPercent}
         title="Compliance documents"
       />
+
+      <DriverTrainingPanel driverId={id} driverName={profile.fullName} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <PanelCard title="Profile">
