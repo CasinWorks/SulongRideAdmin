@@ -24,6 +24,7 @@ import type {
   VehicleRow,
 } from '../types/onboarding'
 import { logAudit } from './audit'
+import { auditSummaryDriverRequirementsPending } from '../lib/auditSummary'
 import {
   assignVehicleToDriver as fleetAssignVehicle,
   listAvailableVehiclesForDriver,
@@ -331,6 +332,71 @@ export async function rejectOnboarding(driverId: string, reason: string): Promis
     entityType: 'drivers',
     entityId: driverId,
     summary: `Driver onboarding rejected — ${trimmed}`,
+  })
+}
+
+/** Pull an approved driver back to pending so they must re-upload docs before booking. */
+export async function setDriverPendingRequirements(
+  driverId: string,
+  options: {
+    reason: string
+    requiredDocTypes?: DocumentTypeId[]
+    driverName?: string
+  },
+): Promise<void> {
+  const reason = options.reason.trim()
+  if (reason.length < 3) throw new Error('Enter a reason the driver will see')
+
+  const { error: driverError } = await supabase
+    .from('drivers')
+    .update({
+      approval_status: 'pending',
+      is_online: false,
+      is_available: false,
+    })
+    .eq('id', driverId)
+  if (driverError) throwSupabaseError(driverError, 'Failed to set driver pending')
+
+  await ensurePipeline(driverId)
+  const { error: pipelineError } = await supabase
+    .from('driver_hiring_pipeline')
+    .update({
+      current_stage: 'onboarding',
+      stage_status: 'in_progress',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('driver_id', driverId)
+  if (pipelineError) throwSupabaseError(pipelineError, 'Failed to update hiring pipeline')
+
+  const docTypes = options.requiredDocTypes ?? []
+  if (docTypes.length > 0) {
+    for (const docType of docTypes) {
+      const { error: docError } = await supabase
+        .from('driver_documents')
+        .update({
+          status: 'rejected',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('driver_id', driverId)
+        .eq('doc_type', docType)
+      if (docError) throwSupabaseError(docError, `Failed to mark ${docType} for re-upload`)
+    }
+    await syncChecklistPercent(driverId)
+  }
+
+  await logTimeline(driverId, 'requirements_pending', reason, {
+    required_doc_types: docTypes,
+  })
+
+  await logAudit({
+    action: 'driver.requirements_pending',
+    entityType: 'drivers',
+    entityId: driverId,
+    summary: auditSummaryDriverRequirementsPending(options.driverName ?? driverId, reason),
+    metadata: {
+      reason,
+      required_doc_types: docTypes,
+    },
   })
 }
 

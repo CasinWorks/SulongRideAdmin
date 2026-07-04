@@ -40,6 +40,15 @@ export function auditSummaryDriverApproval(status: string): string {
   return `Driver approval set to ${sanitizeAuditText(status, 32)}`
 }
 
+export function auditSummaryDriverRequirementsPending(
+  driverName: string,
+  reason: string,
+): string {
+  const name = sanitizeAuditText(driverName, 64)
+  const detail = sanitizeAuditText(reason, 120)
+  return `Driver set to pending for document requirements — ${name} — ${detail}`
+}
+
 export function auditSummaryLeaveReview(status: string): string {
   return `Leave request ${sanitizeAuditText(status, 32)}`
 }

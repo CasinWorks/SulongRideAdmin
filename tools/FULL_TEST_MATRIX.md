@@ -197,6 +197,7 @@ Run in order in **SQL Editor**:
 | A4 | Onboarding review | `/drivers/onboarding/:id` | Open each doc | Image/PDF previews load | Missing storage policy | Preview fails / 403 |
 | A5 | Approve driver | `/pending` → Approve | Test driver | Moves to Approved; driver can proceed | Approve without docs | Driver still blocked in app |
 | A6 | Revoke driver | `/approved` → Revoke | Test driver | Status rejected; app blocks Online | — | — |
+| A6b | Require documents | Driver detail or `/approved` → **Require documents** | Reason + optional doc checkboxes | Driver → pending, offline; appears on `/pending` | Viewer / HR tries action | Button hidden |
 | A7 | Assign fleet | Driver detail or onboarding Employment | Unit `CVM-1234` | Assigned unit shows in driver app | Assign retired unit | Error or unit unavailable |
 | A8 | Training onsite | Driver detail → mark onsite | Test driver | Training complete without app quiz | — | — |
 | A9 | Payroll settings | `/payroll` → Deduction settings | Edit Pag-IBIG JSON → Save | Preview uses new values | Invalid JSON | Validation error |
@@ -220,6 +221,7 @@ Run in order in **SQL Editor**:
 | B2 | Onboarding docs | `/onboarding/apply` steps | Upload required docs (no OR/CR) | Checklist → 100% | Skip required doc | < 100%, blocked at B6 |
 | B3 | Training quiz | `/training` → modules + quiz | Score ≥ 80% | Training complete | Score < 80% | Must retake |
 | B4 | Online blocked (pre-approval) | `/home` → Online | Before admin approve | Snackbar / block reason | — | Online stays off |
+| B4b | Require documents recall | Admin A6b on approved driver | Driver app open on `/home` | Within ~25s redirect `/onboarding`; operator reason shown | Driver tries Online | Blocked; pushed to upload wizard |
 | B5 | Online blocked (no unit) | After approve, no fleet assign | Toggle Online | “No e-trike assigned” | — | — |
 | B6 | Go Online | All gates pass | Toggle Online | Online ON; location updates | Maintenance active | Maintenance screen |
 | B7 | Time in/out | `/attendance` | Clock in → out | Records in admin Attendance | — | — |

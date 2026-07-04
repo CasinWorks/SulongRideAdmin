@@ -8,13 +8,15 @@ import {
   setDriverApproval,
   updateDriverName,
 } from '../services/admin'
-import { fetchOnboardingBundle } from '../services/onboarding'
+import { fetchOnboardingBundle, setDriverPendingRequirements } from '../services/onboarding'
 import { DriverTrainingPanel } from '../components/training/DriverTrainingPanel'
 import { DriverVehicleAssignPanel } from '../components/fleet/DriverVehicleAssignPanel'
 import { DriverDocumentsPanel } from '../components/onboarding/DriverDocumentsPanel'
+import { RequireDocumentsModal } from '../components/onboarding/RequireDocumentsModal'
 import { ConfirmPermanentDeleteModal } from '../components/ui/ConfirmPermanentDeleteModal'
 import { useAuth } from '../hooks/useAuth'
 import type { DriverDocumentRow } from '../types/onboarding'
+import type { DocumentTypeId } from '../lib/onboardingConstants'
 import { formatDateTime, formatPeso } from '../lib/format'
 import { NameFormModal } from '../components/NameFormModal'
 import {
@@ -43,6 +45,9 @@ export function DriverDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteToken, setDeleteToken] = useState('')
   const [deleteBusy, setDeleteBusy] = useState(false)
+  const [requireDocsOpen, setRequireDocsOpen] = useState(false)
+  const [requireDocsBusy, setRequireDocsBusy] = useState(false)
+  const [requireDocsError, setRequireDocsError] = useState<string | null>(null)
 
   function load() {
     if (!id) return
@@ -115,6 +120,25 @@ export function DriverDetailPage() {
     }
   }
 
+  async function handleRequireDocuments(reason: string, requiredDocTypes: DocumentTypeId[]) {
+    if (!id || !profile) return
+    setRequireDocsBusy(true)
+    setRequireDocsError(null)
+    try {
+      await setDriverPendingRequirements(id, {
+        reason,
+        requiredDocTypes,
+        driverName: profile.fullName,
+      })
+      setRequireDocsOpen(false)
+      load()
+    } catch (e) {
+      setRequireDocsError(e instanceof Error ? e.message : 'Update failed')
+    } finally {
+      setRequireDocsBusy(false)
+    }
+  }
+
   if (!id) return <ErrorState message="Missing driver id" />
   if (loading) return <LoadingState />
   if (error) return <ErrorState message={error} />
@@ -155,11 +179,22 @@ export function DriverDetailPage() {
           </div>
         </div>
         {canWriteDrivers ? (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {profile.approvalStatus !== 'approved' ? (
               <PrimaryButton disabled={busy} onClick={() => void handleApproval('approved')}>
                 Approve
               </PrimaryButton>
+            ) : null}
+            {profile.approvalStatus === 'approved' ? (
+              <GhostButton
+                disabled={busy}
+                onClick={() => {
+                  setRequireDocsError(null)
+                  setRequireDocsOpen(true)
+                }}
+              >
+                Require documents
+              </GhostButton>
             ) : null}
             {profile.approvalStatus !== 'rejected' ? (
               <GhostButton disabled={busy} onClick={() => void handleApproval('rejected')}>
@@ -318,6 +353,15 @@ export function DriverDetailPage() {
         onTokenChange={setDeleteToken}
         onConfirm={() => void handleDeleteDriver()}
         onClose={() => setDeleteOpen(false)}
+      />
+
+      <RequireDocumentsModal
+        open={requireDocsOpen}
+        driverName={profile.fullName}
+        busy={requireDocsBusy}
+        error={requireDocsError}
+        onConfirm={(reason, docTypes) => void handleRequireDocuments(reason, docTypes)}
+        onClose={() => setRequireDocsOpen(false)}
       />
     </div>
   )

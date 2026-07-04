@@ -7,6 +7,7 @@ import {
   auditSummaryTeamInvite,
   auditSummaryUpdatedFareSchedule,
   auditSummaryDriverApproval,
+  auditSummaryDriverRequirementsPending,
   sanitizeAuditText,
 } from './auditSummary'
 
@@ -62,6 +63,15 @@ describe('auditSummaryOperatorAction', () => {
 describe('auditSummaryDriverApproval', () => {
   it('includes sanitized status', () => {
     expect(auditSummaryDriverApproval('approved')).toBe('Driver approval set to approved')
+  })
+})
+
+describe('auditSummaryDriverRequirementsPending', () => {
+  it('includes driver name and reason', () => {
+    expect(
+      auditSummaryDriverRequirementsPending('Juan Cruz', 'PDL expired'),
+    ).toContain('Juan Cruz')
+    expect(auditSummaryDriverRequirementsPending('Juan Cruz', 'PDL expired')).toContain('PDL expired')
   })
 })
 
