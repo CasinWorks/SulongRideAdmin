@@ -18,6 +18,7 @@ import {
   ClipboardList,
   GraduationCap,
   Truck,
+  Wallet,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { operatorDisplayName } from '../../lib/displayName'
@@ -36,6 +37,7 @@ const baseNav = [
   { to: '/approved', label: 'Approved', icon: UserCheck },
   { to: '/revoked', label: 'Revoked', icon: UserX },
   { to: '/attendance', label: 'Attendance', icon: CalendarDays },
+  { to: '/payroll', label: 'Payroll', icon: Wallet },
   { to: '/leave', label: 'Leave', icon: Palmtree },
   { to: '/fare', label: 'Fare', icon: Banknote },
   { to: '/audit', label: 'Audit logs', icon: ScrollText },

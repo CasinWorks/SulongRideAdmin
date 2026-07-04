@@ -20,6 +20,7 @@ import { DriverOnboardingPage } from './pages/DriverOnboardingPage'
 import { TrainingPage } from './pages/TrainingPage'
 import { FleetPage } from './pages/FleetPage'
 import { FleetVehiclePage } from './pages/FleetVehiclePage'
+import { PayrollPage } from './pages/PayrollPage'
 import { UsersPage } from './pages/UsersPage'
 import { InviteAcceptPage } from './pages/InviteAcceptPage'
 import { LoadingState, ScreenLoader } from './components/ui/AdminUi'
@@ -129,6 +130,7 @@ function AppRoutes() {
           }
         />
         <Route path="attendance" element={<AttendancePage />} />
+        <Route path="payroll" element={<PayrollPage />} />
         <Route path="leave" element={<LeavePage />} />
         <Route path="fare" element={<FarePage />} />
         <Route path="audit" element={<AuditPage />} />
