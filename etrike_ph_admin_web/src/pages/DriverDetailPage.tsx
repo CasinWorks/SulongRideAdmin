@@ -13,6 +13,8 @@ import { DriverTrainingPanel } from '../components/training/DriverTrainingPanel'
 import { DriverVehicleAssignPanel } from '../components/fleet/DriverVehicleAssignPanel'
 import { DriverDocumentsPanel } from '../components/onboarding/DriverDocumentsPanel'
 import { RequireDocumentsModal } from '../components/onboarding/RequireDocumentsModal'
+import { DriverShiftSetupPanel } from '../components/hr/DriverShiftSetupPanel'
+import { DriverSchedulePanel } from '../components/hr/DriverSchedulePanel'
 import { ConfirmPermanentDeleteModal } from '../components/ui/ConfirmPermanentDeleteModal'
 import { useAuth } from '../hooks/useAuth'
 import type { DriverDocumentRow } from '../types/onboarding'
@@ -33,7 +35,7 @@ import type { DriverProfile } from '../types'
 export function DriverDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { isAdmin, canWriteDrivers } = useAuth()
+  const { isAdmin, canWriteDrivers, canWriteHr } = useAuth()
   const [profile, setProfile] = useState<DriverProfile | null>(null)
   const [documents, setDocuments] = useState<DriverDocumentRow[]>([])
   const [checklistPercent, setChecklistPercent] = useState(0)
@@ -221,6 +223,15 @@ export function DriverDetailPage() {
         driverName={profile.fullName}
         onChanged={load}
       />
+
+      <DriverShiftSetupPanel
+        driverId={id!}
+        driverName={profile.fullName}
+        readOnly={!canWriteHr}
+        onChanged={load}
+      />
+
+      <DriverSchedulePanel driverId={id!} />
 
       <DriverTrainingPanel driverId={id} driverName={profile.fullName} readOnly={!canWriteDrivers} />
 

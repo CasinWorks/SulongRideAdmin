@@ -49,6 +49,9 @@ export type DriverRow = {
   employment_type: string
   station: string
   shift_schedule: string
+  shift_days: number[]
+  shift_start: string
+  shift_end: string
   emergency_contact: string
   start_date: string | null
 }

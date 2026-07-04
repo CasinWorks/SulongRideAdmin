@@ -31,6 +31,11 @@ export function mapDriver(row: Record<string, unknown>): DriverRow {
     employment_type: (row.employment_type as string) ?? 'contractual',
     station: (row.station as string) ?? 'Carmona Central',
     shift_schedule: (row.shift_schedule as string) ?? '—',
+    shift_days: Array.isArray(row.shift_days)
+      ? (row.shift_days as number[]).map((n) => Number(n))
+      : [1, 2, 3, 4, 5, 6],
+    shift_start: (row.shift_start as string) ?? '06:00:00',
+    shift_end: (row.shift_end as string) ?? '14:00:00',
     emergency_contact: (row.emergency_contact as string) ?? '',
     start_date: (row.start_date as string) ?? null,
   }
