@@ -39,6 +39,20 @@ import {
 
 const WIZARD_STEPS = ONBOARDING_STEP_LABELS.length - 1
 
+function CompanyFleetNote({ compact = false }: { compact?: boolean }) {
+  return (
+    <div
+      className={`rounded-xl border border-admin-accent/25 bg-admin-accent/5 ${compact ? 'p-3' : 'p-4'}`}
+    >
+      <p className="text-sm font-medium text-black/87">Company-owned e-trike fleet</p>
+      <p className="mt-1 text-sm text-black/55">
+        SulongRide provides the e-trike — drivers do not submit OR/CR. Assign a fleet unit in the
+        Employment step; the driver sees their unit ID in the app after assignment.
+      </p>
+    </div>
+  )
+}
+
 function StepIndicator({ current }: { current: number }) {
   return (
     <ol className="mb-6 flex flex-wrap gap-2">
@@ -460,6 +474,7 @@ export function DriverOnboardingPage() {
 
           {[2, 3, 4].includes(step) ? (
             <div className="space-y-4">
+              {step === 2 ? <CompanyFleetNote /> : null}
               {(DOCUMENTS_BY_STEP[step] ?? []).map((docType) => (
                 <DocumentUploadField
                   key={docType}
@@ -484,8 +499,14 @@ export function DriverOnboardingPage() {
 
           {step === 5 ? (
             <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <CompanyFleetNote compact />
+              </div>
               <label className="block sm:col-span-2">
                 <span className="text-sm font-medium text-black/70">Assigned e-trike unit</span>
+                <p className="mb-2 text-xs text-black/45">
+                  Required before approval — links this driver to a company-owned unit (replaces OR/CR).
+                </p>
                 <select
                   className={adminInputCls}
                   value={employment.vehicle_id}

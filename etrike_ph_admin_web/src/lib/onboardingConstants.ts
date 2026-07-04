@@ -31,6 +31,9 @@ export type HiringStageId =
   | 'contract_signing'
   | 'approved_active'
 
+/** Legacy doc types — kept in schema for future driver-owned vehicle model. Not required for company fleet. */
+export const OPTIONAL_DRIVER_DOCUMENTS: DocumentTypeId[] = ['lto_or', 'lto_cr']
+
 export const DOCUMENT_LABELS: Record<DocumentTypeId, string> = {
   profile_photo: 'Profile photo',
   valid_id: 'Valid government ID',
@@ -47,13 +50,11 @@ export const DOCUMENT_LABELS: Record<DocumentTypeId, string> = {
   contract_signed: 'Signed employment contract',
 }
 
-/** Required for Carmona pilot onboarding approval. */
+/** Required for Carmona pilot onboarding approval (company-owned e-trikes — no OR/CR). */
 export const REQUIRED_DRIVER_DOCUMENTS: DocumentTypeId[] = [
   'profile_photo',
   'valid_id',
   'pdl',
-  'lto_or',
-  'lto_cr',
   'ltfrb_cpc',
   'nbi',
   'police_clearance',
@@ -64,7 +65,7 @@ export const REQUIRED_DRIVER_DOCUMENTS: DocumentTypeId[] = [
 
 export const DOCUMENTS_BY_STEP: Record<number, DocumentTypeId[]> = {
   1: ['profile_photo', 'valid_id'],
-  2: ['pdl', 'lto_or', 'lto_cr', 'ltfrb_cpc'],
+  2: ['pdl', 'ltfrb_cpc'],
   3: ['nbi', 'police_clearance', 'barangay_clearance'],
   4: ['medical_cert', 'drug_test'],
 }
@@ -72,7 +73,7 @@ export const DOCUMENTS_BY_STEP: Record<number, DocumentTypeId[]> = {
 export const ONBOARDING_STEP_LABELS = [
   'Applicant',
   'Personal info',
-  'License & LTO',
+  "Driver's license",
   'Clearances',
   'Health',
   'Employment',
