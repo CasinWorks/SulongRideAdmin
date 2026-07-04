@@ -3,6 +3,7 @@ import {
   DOCUMENT_LABELS,
   documentDoesNotExpire,
   DEFAULT_STATION,
+  REQUIRED_DRIVER_DOCUMENTS,
   STORAGE_BUCKET,
 } from '../lib/onboardingConstants'
 import {
@@ -276,11 +277,135 @@ export async function uploadDocument(
   return mapDriverDocument(data as Record<string, unknown>)
 }
 
+export async function reviewDriverDocument(
+  driverId: string,
+  docType: DocumentTypeId,
+  decision: 'verified' | 'rejected',
+  options?: { note?: string; driverName?: string },
+): Promise<void> {
+  const label = DOCUMENT_LABELS[docType]
+  const docs = await listDocuments(driverId)
+  const existing = docs.find((d) => d.doc_type === docType)
+  if (!existing?.file_url) {
+    throw new Error(`No upload on file for ${label}`)
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const now = new Date().toISOString()
+
+  if (decision === 'verified') {
+    const status = documentDoesNotExpire(docType) ? 'does_not_expire' : 'verified'
+    const { error } = await supabase
+      .from('driver_documents')
+      .update({
+        status,
+        admin_notes: null,
+        verified_by: user?.id ?? null,
+        verified_at: now,
+        updated_at: now,
+      })
+      .eq('driver_id', driverId)
+      .eq('doc_type', docType)
+    if (error) throwSupabaseError(error, `Failed to verify ${label}`)
+
+    await syncChecklistPercent(driverId)
+    await logTimeline(driverId, 'document_verified', `${label} verified`)
+    await logAudit({
+      action: 'driver.document.verify',
+      entityType: 'driver_documents',
+      entityId: driverId,
+      summary: `Verified ${label}${options?.driverName ? ` — ${options.driverName}` : ''}`,
+      metadata: { doc_type: docType, status },
+    })
+    return
+  }
+
+  const note = options?.note?.trim() ?? ''
+  if (note.length < 3) {
+    throw new Error('Enter a rejection reason for the driver (at least 3 characters)')
+  }
+
+  const { error: docError } = await supabase
+    .from('driver_documents')
+    .update({
+      status: 'rejected',
+      admin_notes: note,
+      verified_by: null,
+      verified_at: null,
+      updated_at: now,
+    })
+    .eq('driver_id', driverId)
+    .eq('doc_type', docType)
+  if (docError) throwSupabaseError(docError, `Failed to reject ${label}`)
+
+  const { data: driverRow } = await supabase
+    .from('drivers')
+    .select('approval_status, full_name')
+    .eq('id', driverId)
+    .maybeSingle()
+
+  if (driverRow?.approval_status === 'approved') {
+    const { error: driverError } = await supabase
+      .from('drivers')
+      .update({
+        approval_status: 'pending',
+        is_online: false,
+        is_available: false,
+      })
+      .eq('id', driverId)
+    if (driverError) throwSupabaseError(driverError, 'Failed to set driver pending')
+
+    await ensurePipeline(driverId)
+    await supabase
+      .from('driver_hiring_pipeline')
+      .update({
+        current_stage: 'onboarding',
+        stage_status: 'in_progress',
+        updated_at: now,
+      })
+      .eq('driver_id', driverId)
+  }
+
+  await syncChecklistPercent(driverId)
+  await logTimeline(driverId, 'document_rejected', `${label} rejected — ${note}`, {
+    doc_type: docType,
+  })
+  await logAudit({
+    action: 'driver.document.reject',
+    entityType: 'driver_documents',
+    entityId: driverId,
+    summary: `Rejected ${label}${options?.driverName ? ` — ${options.driverName}` : ''} — ${note}`,
+    metadata: { doc_type: docType, note },
+  })
+}
+
 export async function approveOnboarding(driverId: string, notes?: string): Promise<void> {
   const docs = await listDocuments(driverId)
   const checklist = computeChecklistPercent(docs)
   if (checklist < 100) {
     throw new Error(`Document checklist incomplete (${checklist}%). Upload all required documents.`)
+  }
+
+  const pendingReview = docs.filter(
+    (d) =>
+      REQUIRED_DRIVER_DOCUMENTS.includes(d.doc_type) &&
+      d.file_url &&
+      d.status !== 'verified' &&
+      d.status !== 'does_not_expire',
+  )
+  if (pendingReview.length > 0) {
+    throw new Error(
+      `Verify all compliance documents before approving (${pendingReview.length} still pending review).`,
+    )
+  }
+
+  const rejected = docs.filter(
+    (d) => REQUIRED_DRIVER_DOCUMENTS.includes(d.doc_type) && d.status === 'rejected',
+  )
+  if (rejected.length > 0) {
+    throw new Error('Some documents are rejected. Ask the driver to re-upload before approving.')
   }
 
   const { error: driverError } = await supabase

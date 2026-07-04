@@ -634,7 +634,14 @@ export function DriverOnboardingPage() {
       ) : null}
 
       {step >= 2 && activeDriver ? (
-        <DriverDocumentsPanel documents={documents} checklistPercent={checklistPercent} />
+        <DriverDocumentsPanel
+          driverId={activeDriver.id}
+          documents={documents}
+          checklistPercent={checklistPercent}
+          readOnly={!canWriteDrivers}
+          driverName={driverDisplayName(activeDriver)}
+          onChanged={() => void loadBundle(activeDriver.id)}
+        />
       ) : null}
 
       {activeDriver ? (

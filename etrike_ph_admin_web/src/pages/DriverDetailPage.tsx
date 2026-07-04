@@ -213,9 +213,13 @@ export function DriverDetailPage() {
       </div>
 
       <DriverDocumentsPanel
+        driverId={id!}
         documents={documents}
         checklistPercent={checklistPercent}
         title="Compliance documents"
+        readOnly={!canWriteDrivers}
+        driverName={profile.fullName}
+        onChanged={load}
       />
 
       <DriverTrainingPanel driverId={id} driverName={profile.fullName} readOnly={!canWriteDrivers} />
