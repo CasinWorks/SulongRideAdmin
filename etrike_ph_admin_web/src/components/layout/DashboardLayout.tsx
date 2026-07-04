@@ -19,6 +19,7 @@ import {
   GraduationCap,
   Truck,
   Wallet,
+  Construction,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { operatorDisplayName } from '../../lib/displayName'
@@ -43,9 +44,16 @@ const baseNav = [
   { to: '/audit', label: 'Audit logs', icon: ScrollText },
 ]
 
+const maintenanceNav = {
+  to: '/maintenance',
+  label: 'Maintenance',
+  icon: Construction,
+  end: false as const,
+}
+
 const teamNav = { to: '/team', label: 'Team', icon: Shield, end: false as const }
 
-type NavItem = (typeof baseNav)[number] | typeof teamNav
+type NavItem = (typeof baseNav)[number] | typeof teamNav | typeof maintenanceNav
 
 function isNavItemActive(to: string, end: boolean | undefined, pathname: string): boolean {
   if (to === '/drivers/onboarding') {
@@ -191,7 +199,7 @@ export function DashboardLayout() {
   const [editNameOpen, setEditNameOpen] = useState(false)
   const [nameBusy, setNameBusy] = useState(false)
 
-  const nav: NavItem[] = isAdmin ? [...baseNav, teamNav] : baseNav
+  const nav: NavItem[] = isAdmin ? [...baseNav, maintenanceNav, teamNav] : baseNav
   const displayName = operator ? operatorDisplayName(operator) : 'Operator'
 
   const currentPage =
