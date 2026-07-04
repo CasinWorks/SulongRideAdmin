@@ -11,7 +11,6 @@ import {
   mapHiringPipeline,
   mapRegistrationDraft,
   mapTimelineEntry,
-  mapVehicle,
 } from '../lib/onboardingMappers'
 import { throwSupabaseError, supabaseErrorMessage } from '../lib/supabaseError'
 import type { DocumentTypeId } from '../lib/onboardingConstants'
@@ -25,6 +24,10 @@ import type {
   VehicleRow,
 } from '../types/onboarding'
 import { logAudit } from './audit'
+import {
+  assignVehicleToDriver as fleetAssignVehicle,
+  listAvailableVehiclesForDriver,
+} from './fleet'
 
 async function logTimeline(
   driverId: string,
@@ -60,13 +63,16 @@ async function syncChecklistPercent(driverId: string): Promise<number> {
 }
 
 export async function listAvailableVehicles(forDriverId?: string): Promise<VehicleRow[]> {
-  const { data, error } = await supabase.from('vehicles').select('*').order('unit_number')
-  if (error) throwSupabaseError(error, 'Failed to load vehicles')
-  return (data ?? [])
-    .map((row) => mapVehicle(row as Record<string, unknown>))
-    .filter(
-      (v) => v.status === 'available' || (forDriverId && v.assigned_driver_id === forDriverId),
-    )
+  const rows = await listAvailableVehiclesForDriver(forDriverId)
+  return rows.map((v) => ({
+    id: v.id,
+    unit_number: v.unit_number,
+    plate_number: v.plate_number,
+    model: v.model,
+    status: v.status,
+    assigned_driver_id: v.assigned_driver_id,
+    boundary_fee: v.boundary_fee,
+  }))
 }
 
 export async function listDocuments(driverId: string): Promise<DriverDocumentRow[]> {
@@ -194,13 +200,15 @@ export async function saveEmployment(driverId: string, form: EmploymentForm): Pr
       shift_schedule: form.shift_schedule,
       start_date: form.start_date,
       station: form.station || DEFAULT_STATION,
-      trike_plate_number: vehicle.plate_number,
-      trike_model: vehicle.model,
     })
     .eq('id', driverId)
   if (driverError) throwSupabaseError(driverError, 'Failed to update employment')
 
-  await assignVehicle(vehicle.id, driverId, vehicle.plate_number)
+  await fleetAssignVehicle({
+    vehicle_id: vehicle.id,
+    driver_id: driverId,
+    notes: `Onboarding employment step — unit ${vehicle.unit_number}`,
+  })
 
   const { error: draftError } = await supabase.from('driver_registration_drafts').upsert({
     driver_id: driverId,
@@ -216,23 +224,9 @@ export async function saveEmployment(driverId: string, form: EmploymentForm): Pr
 export async function assignVehicle(
   vehicleId: string,
   driverId: string,
-  plateNumber: string,
+  _plateNumber: string,
 ): Promise<void> {
-  const { error: vehicleError } = await supabase
-    .from('vehicles')
-    .update({
-      assigned_driver_id: driverId,
-      status: 'assigned',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', vehicleId)
-  if (vehicleError) throwSupabaseError(vehicleError, 'Failed to assign vehicle')
-
-  const { error: driverError } = await supabase
-    .from('drivers')
-    .update({ trike_plate_number: plateNumber })
-    .eq('id', driverId)
-  if (driverError) throwSupabaseError(driverError, 'Failed to link plate to driver')
+  await fleetAssignVehicle({ vehicle_id: vehicleId, driver_id: driverId })
 }
 
 export async function uploadDocument(

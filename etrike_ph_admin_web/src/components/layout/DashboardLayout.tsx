@@ -17,6 +17,7 @@ import {
   Pencil,
   ClipboardList,
   GraduationCap,
+  Truck,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { operatorDisplayName } from '../../lib/displayName'
@@ -29,6 +30,7 @@ const baseNav = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/drivers', label: 'Drivers', icon: Users },
   { to: '/drivers/onboarding', label: 'Onboarding', icon: ClipboardList },
+  { to: '/fleet', label: 'Fleet', icon: Truck },
   { to: '/training', label: 'Training', icon: GraduationCap },
   { to: '/pending', label: 'Pending', icon: Clock },
   { to: '/approved', label: 'Approved', icon: UserCheck },
@@ -46,6 +48,9 @@ type NavItem = (typeof baseNav)[number] | typeof teamNav
 function isNavItemActive(to: string, end: boolean | undefined, pathname: string): boolean {
   if (to === '/drivers/onboarding') {
     return pathname.startsWith('/drivers/onboarding')
+  }
+  if (to === '/fleet') {
+    return pathname === '/fleet' || pathname.startsWith('/fleet/')
   }
   if (to === '/drivers') {
     return (

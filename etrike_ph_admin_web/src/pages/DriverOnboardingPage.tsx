@@ -37,6 +37,7 @@ import {
   DriverDocumentsPanel,
 } from '../components/onboarding/DriverDocumentsPanel'
 import { DriverTrainingPanel } from '../components/training/DriverTrainingPanel'
+import { DriverVehicleAssignPanel } from '../components/fleet/DriverVehicleAssignPanel'
 
 const WIZARD_STEPS = ONBOARDING_STEP_LABELS.length - 1
 
@@ -614,6 +615,14 @@ export function DriverOnboardingPage() {
 
       {activeDriver ? (
         <DriverTrainingPanel driverId={activeDriver.id} driverName={driverDisplayName(activeDriver)} />
+      ) : null}
+
+      {activeDriver ? (
+        <DriverVehicleAssignPanel
+          driverId={activeDriver.id}
+          driverName={driverDisplayName(activeDriver)}
+          onChanged={() => void loadBundle(activeDriver.id)}
+        />
       ) : null}
     </div>
   )
