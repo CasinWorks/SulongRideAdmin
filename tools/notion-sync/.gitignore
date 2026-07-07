@@ -1,0 +1,6 @@
+.env
+.notion-sync-state.json
+__pycache__/
+*.pyc
+.venv/
+venv/

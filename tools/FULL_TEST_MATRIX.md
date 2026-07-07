@@ -267,7 +267,7 @@ Run in order on **two phones** + **admin browser**.
 | 9 | Admin | Audit + Payroll preview | Trip + driver activity visible |
 | 10 | Admin | Schedule maintenance (5m) → wait | Banner → block → end now → apps restore |
 
-**Golden path sign-off:** _________________ Date: _________
+**Golden path sign-off:** Date: **2026-07-05** — all tests passed on `dev`, `UAT`, and `main`
 
 ---
 

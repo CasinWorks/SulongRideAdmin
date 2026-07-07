@@ -85,6 +85,7 @@ const ROUTE_ACCESS: Record<string, OperatorRole[] | 'all'> = {
   '/drivers/onboarding': ['super_admin', 'admin', 'viewer', 'hr', 'dispatcher'],
   '/training': ['super_admin', 'admin', 'viewer', 'hr', 'dispatcher'],
   '/fleet': ['super_admin', 'admin', 'viewer', 'dispatcher'],
+  '/vehicle-types': ['super_admin', 'admin', 'viewer', 'dispatcher'],
   '/pending': ['super_admin', 'admin', 'viewer', 'dispatcher'],
   '/approved': ['super_admin', 'admin', 'viewer', 'dispatcher'],
   '/revoked': ['super_admin', 'admin', 'viewer', 'dispatcher'],
@@ -141,6 +142,7 @@ export function operatorNavRoutes(
   ]
   const fleetOps: NavRoute[] = [
     { to: '/fleet', label: 'Fleet' },
+    { to: '/vehicle-types', label: 'Vehicle types' },
     { to: '/training', label: 'Training' },
     { to: '/pending', label: 'Pending' },
     { to: '/approved', label: 'Approved' },

@@ -1,0 +1,5 @@
+// TripLiveActivityExtension — sync version with pubspec via Generated.xcconfig.
+// Run `flutter pub get` before building from Xcode so Generated.xcconfig exists.
+#include "Generated.xcconfig"
+CURRENT_PROJECT_VERSION = $(FLUTTER_BUILD_NUMBER)
+MARKETING_VERSION = $(FLUTTER_BUILD_NAME)

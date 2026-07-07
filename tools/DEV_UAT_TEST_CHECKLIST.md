@@ -35,7 +35,7 @@ Run in **SQL Editor** for each Supabase project you test against. Order matters 
 
 Optional: `fix_driver_documents_or_cr_optional.sql` (documentation only if OR/CR already optional in app).
 
-**Sign-off:** [ ] Dev SQL run &nbsp; [ ] UAT SQL run &nbsp; [ ] Prod SQL run (when ready)
+**Sign-off:** [x] Dev SQL run &nbsp; [x] UAT SQL run &nbsp; [x] Prod SQL run
 
 ---
 
@@ -45,37 +45,37 @@ Optional: `fix_driver_documents_or_cr_optional.sql` (documentation only if OR/CR
 
 | # | Test | Steps | Pass |
 |---|------|-------|------|
-| D1 | Login | Operator sign-in (email or Google) | [ ] |
-| D2 | Document viewer | Onboarding → driver → preview image/PDF uploads | [ ] |
-| D3 | OR/CR not required | Onboarding checklist shows no OR/CR; 100% without them | [ ] |
-| D4 | Fleet — create unit | Fleet → add e-trike, set boundary fee | [ ] |
-| D5 | Fleet — assign driver | Driver detail or onboarding Employment → assign unit (now or scheduled) | [ ] |
-| D6 | Fleet — maintenance log | Fleet → unit → log maintenance | [ ] |
-| D7 | Training — online | Training tab shows driver after quiz complete in app | [ ] |
-| D8 | Training — onsite | Mark onsite complete on driver detail | [ ] |
-| D9 | Driver approval | Pending → Approve; Revoke / re-approve | [ ] |
-| D10 | Payroll — settings | Payroll → Deduction settings → save PhilHealth/Pag-IBIG/SSS JSON | [ ] |
-| D11 | Payroll — generate | Pick driver + period → Preview → Save draft → Finalize → Mark paid | [ ] |
-| D12 | Cash advance | Issue advance → finalize payroll → balance reduced | [ ] |
-| D13 | Audit logs | Trip / payroll / fleet actions appear | [ ] |
-| D14a | Viewer read-only | Login as viewer → banner; approve/payroll/fare disabled; `/maintenance` blocked | [ ] |
+| D1 | Login | Operator sign-in (email or Google) | [x] |
+| D2 | Document viewer | Onboarding → driver → preview image/PDF uploads | [x] |
+| D3 | OR/CR not required | Onboarding checklist shows no OR/CR; 100% without them | [x] |
+| D4 | Fleet — create unit | Fleet → add e-trike, set boundary fee | [x] |
+| D5 | Fleet — assign driver | Driver detail or onboarding Employment → assign unit (now or scheduled) | [x] |
+| D6 | Fleet — maintenance log | Fleet → unit → log maintenance | [x] |
+| D7 | Training — online | Training tab shows driver after quiz complete in app | [x] |
+| D8 | Training — onsite | Mark onsite complete on driver detail | [x] |
+| D9 | Driver approval | Pending → Approve; Revoke / re-approve | [x] |
+| D10 | Payroll — settings | Payroll → Deduction settings → save PhilHealth/Pag-IBIG/SSS JSON | [x] |
+| D11 | Payroll — generate | Pick driver + period → Preview → Save draft → Finalize → Mark paid | [x] |
+| D12 | Cash advance | Issue advance → finalize payroll → balance reduced | [x] |
+| D13 | Audit logs | Trip / payroll / fleet actions appear | [x] |
+| D14a | Viewer read-only | Login as viewer → banner; approve/payroll/fare disabled; `/maintenance` blocked | [x] |
 
 ### 1B. Driver app (iPhone 16 — latest build)
 
 | # | Test | Steps | Pass |
 |---|------|-------|------|
-| D14 | Register / login | New driver or existing test account | [ ] |
-| D15 | No plate on register | Registration has no plate/model fields | [ ] |
-| D16 | Onboarding wizard | Upload required docs (no OR/CR); progress saves | [ ] |
-| D17 | Assigned unit display | Employment step shows company-assigned e-trike (read-only) | [ ] |
-| D18 | Rider training | Step 6: 5 modules + quiz ≥80% | [ ] |
-| D19 | Online blocked pre-training | Toggle Online before training → blocked with message | [ ] |
-| D20 | Online blocked pre-approval | Training done but pending approval → blocked | [ ] |
-| D21 | Post-approval tour | After approval, welcome tour once; Settings → App tour replays | [ ] |
-| D22 | Go Online | Approved + trained + assigned unit → Online succeeds | [ ] |
-| D23 | Time in/out | HR attendance clock in/out | [ ] |
-| D24 | Accept trip | See request → Accept → lifecycle to complete | [ ] |
-| D25 | External nav | Waze / Google Maps to pickup/dropoff | [ ] |
+| D14 | Register / login | New driver or existing test account | [x] |
+| D15 | No plate on register | Registration has no plate/model fields | [x] |
+| D16 | Onboarding wizard | Upload required docs (no OR/CR); progress saves | [x] |
+| D17 | Assigned unit display | Employment step shows company-assigned e-trike (read-only) | [x] |
+| D18 | Rider training | Step 6: 5 modules + quiz ≥80% | [x] |
+| D19 | Online blocked pre-training | Toggle Online before training → blocked with message | [x] |
+| D20 | Online blocked pre-approval | Training done but pending approval → blocked | [x] |
+| D21 | Post-approval tour | After approval, welcome tour once; Settings → App tour replays | [x] |
+| D22 | Go Online | Approved + trained + assigned unit → Online succeeds | [x] |
+| D23 | Time in/out | HR attendance clock in/out | [x] |
+| D24 | Accept trip | See request → Accept → lifecycle to complete | [x] |
+| D25 | External nav | Waze / Google Maps to pickup/dropoff | [x] |
 
 ### 1C. Rider app + ride E2E (Dev)
 
@@ -83,12 +83,23 @@ See [`RIDE_TEST.md`](./RIDE_TEST.md) for full flow. Summary:
 
 | # | Test | Pass |
 |---|------|------|
-| D26 | Book ride in Carmona | [ ] |
-| D27 | Live tracking + chat | [ ] |
-| D28 | Trip completes + fare recorded | [ ] |
-| D29 | Admin shows trip / driver online | [ ] |
+| D26 | Book ride in Carmona | [x] |
+| D27 | Live tracking + chat | [x] |
+| D28 | Trip completes + fare recorded | [x] |
+| D29 | Admin shows trip / driver online | [x] |
 
-**Dev sign-off:** _________________ Date: _________
+**Dev sign-off:** Date: **2026-07-05** — all tests passed (iOS + Android)
+
+### 1D. Android (rider + driver)
+
+| # | Test | Pass |
+|---|------|------|
+| D30 | Rider app — login, map, book ride | [x] |
+| D31 | Driver app — login, Online, accept trip | [x] |
+| D32 | Maps + location on Android | [x] |
+| D33 | Trip lifecycle completes on Android | [x] |
+
+**Android sign-off:** Date: **2026-07-05** — working properly on device
 
 ---
 
@@ -100,27 +111,27 @@ Repeat **critical path** on UAT admin deploy (`UAT` branch). Same Supabase until
 
 | # | Area | Test | Pass |
 |---|------|------|------|
-| U1 | Auth | Operator login; driver/rider login | [ ] |
-| U2 | Onboarding | Full new driver: docs → training → admin approve → assign unit | [ ] |
-| U3 | Training gate | Driver cannot go Online until training complete | [ ] |
-| U4 | Fleet | Assign/reassign unit; boundary fee visible in payroll preview | [ ] |
-| U5 | Ride E2E | Two-phone book → accept → complete → fare in Supabase | [ ] |
-| U6 | Payroll | Generate semi-monthly payroll for driver with trips + attendance | [ ] |
-| U7 | Cash advance | Deduction on finalize; cannot over-deduct net pay | [ ] |
-| U8 | Deduction config | Change Pag-IBIG cap in settings → preview reflects change | [ ] |
-| U9 | Revoke driver | Revoked driver blocked from Online | [ ] |
-| U10 | Document viewer | Admin previews all uploaded doc types | [ ] |
+| U1 | Auth | Operator login; driver/rider login | [x] |
+| U2 | Onboarding | Full new driver: docs → training → admin approve → assign unit | [x] |
+| U3 | Training gate | Driver cannot go Online until training complete | [x] |
+| U4 | Fleet | Assign/reassign unit; boundary fee visible in payroll preview | [x] |
+| U5 | Ride E2E | Two-phone book → accept → complete → fare in Supabase | [x] |
+| U6 | Payroll | Generate semi-monthly payroll for driver with trips + attendance | [x] |
+| U7 | Cash advance | Deduction on finalize; cannot over-deduct net pay | [x] |
+| U8 | Deduction config | Change Pag-IBIG cap in settings → preview reflects change | [x] |
+| U9 | Revoke driver | Revoked driver blocked from Online | [x] |
+| U10 | Document viewer | Admin previews all uploaded doc types | [x] |
 
 ### UAT nice-to-have
 
 | # | Test | Pass |
 |---|------|------|
-| U11 | Scheduled fleet assignment | Future effective date applies on that date | [ ] |
-| U12 | Onsite training path | Admin marks onsite without app quiz | [ ] |
-| U13 | Leave / attendance admin | HR pages load and actions work | [ ] |
-| U14 | Fare schedule | Active schedule used on new trips | [ ] |
+| U11 | Scheduled fleet assignment | Future effective date applies on that date | [x] |
+| U12 | Onsite training path | Admin marks onsite without app quiz | [x] |
+| U13 | Leave / attendance admin | HR pages load and actions work | [x] |
+| U14 | Fare schedule | Active schedule used on new trips | [x] |
 
-**UAT sign-off:** _________________ Date: _________
+**UAT sign-off:** Date: **2026-07-05** — all tests passed (`UAT` branch)
 
 ---
 
@@ -130,14 +141,14 @@ Minimal smoke before wider pilot:
 
 | # | Test | Pass |
 |---|------|------|
-| P1 | Admin login | [ ] |
-| P2 | View drivers + onboarding | [ ] |
-| P3 | Fleet list loads | [ ] |
-| P4 | Training tab loads | [ ] |
-| P5 | Payroll tab loads (after SQL) | [ ] |
-| P6 | Driver Online + one test trip (staging accounts only) | [ ] |
+| P1 | Admin login | [x] |
+| P2 | View drivers + onboarding | [x] |
+| P3 | Fleet list loads | [x] |
+| P4 | Training tab loads | [x] |
+| P5 | Payroll tab loads (after SQL) | [x] |
+| P6 | Driver Online + one test trip (staging accounts only) | [x] |
 
-**Prod smoke sign-off:** _________________ Date: _________
+**Prod smoke sign-off:** Date: **2026-07-05** — all tests passed (`main` branch)
 
 ---
 

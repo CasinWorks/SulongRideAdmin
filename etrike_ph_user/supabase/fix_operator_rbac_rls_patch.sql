@@ -28,10 +28,7 @@ alter table public.audit_logs
 drop policy if exists "audit_insert_own" on public.audit_logs;
 create policy "audit_insert_own"
   on public.audit_logs for insert to authenticated
-  with check (
-    actor_id = auth.uid()
-    and public.is_approved_operator()
-  );
+  with check (actor_id = auth.uid());
 
 drop policy if exists "audit_select_admin" on public.audit_logs;
 create policy "audit_select_admin"

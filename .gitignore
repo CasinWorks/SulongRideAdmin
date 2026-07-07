@@ -5,23 +5,31 @@
 node_modules/
 dist/
 dist-ssr/
+coverage/
 *.local
 .env
 .env.local
 .env.*.local
 
-# Flutter admin
-.dart_tool/
-.pub/
-build/
-**/doc/api/
+# Flutter
+**/.dart_tool/
+**/build/
+**/.flutter-plugins-dependencies
+**/.pub/
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/ephemeral/
+**/android/.gradle/
+**/android/local.properties
+**/*.iml
+.idea/
+
+# Vercel
+.vercel
 
 # Logs
 *.log
 
 # Editor
-.idea/
 .vscode/*
 !.vscode/extensions.json
-.vercel
-.env*

@@ -1,0 +1,5 @@
+-- Convenience: run these two scripts in Supabase → SQL Editor (in order):
+--   1) supabase/fix_users_rls.sql
+--   2) supabase/backfill_users_from_auth.sql
+--
+-- This file is a pointer only (SQL Editor does not support \include).

@@ -140,13 +140,11 @@ extension DocumentTypeX on DocumentType {
       };
 }
 
-/// Required docs for company e-trike drivers (operator-owned fleet).
+/// Required docs for company e-trike drivers (operator-owned fleet; OR/CR optional).
 const kRequiredDriverDocuments = <DocumentType>[
   DocumentType.profilePhoto,
   DocumentType.validId,
   DocumentType.pdl,
-  DocumentType.ltoOr,
-  DocumentType.ltoCr,
   DocumentType.ltfrbCpc,
   DocumentType.nbi,
   DocumentType.policeClearance,
@@ -326,7 +324,7 @@ int computeChecklistPercent(List<DriverDocumentRow> docs) {
 
 const kRegistrationStepLabels = [
   'Personal Info',
-  'License & LTO',
+  "Driver's License",
   'Clearances',
   'Health & Drug',
   'Contributions',

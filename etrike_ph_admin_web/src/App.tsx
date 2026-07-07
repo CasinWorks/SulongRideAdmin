@@ -20,6 +20,7 @@ import { DriverOnboardingPage } from './pages/DriverOnboardingPage'
 import { TrainingPage } from './pages/TrainingPage'
 import { FleetPage } from './pages/FleetPage'
 import { FleetVehiclePage } from './pages/FleetVehiclePage'
+import { VehicleTypesPage } from './pages/VehicleTypesPage'
 import { PayrollPage } from './pages/PayrollPage'
 import { MaintenancePage } from './pages/MaintenancePage'
 import { UsersPage } from './pages/UsersPage'
@@ -96,6 +97,7 @@ function AppRoutes() {
         <Route path="training" element={<TrainingPage />} />
         <Route path="fleet" element={<FleetPage />} />
         <Route path="fleet/:id" element={<FleetVehiclePage />} />
+        <Route path="vehicle-types" element={<VehicleTypesPage />} />
         <Route path="drivers" element={<DriversPage />} />
         <Route path="drivers/:id" element={<DriverDetailPage />} />
         <Route

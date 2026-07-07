@@ -84,6 +84,17 @@ export type FareSchedule = {
   updated_at: string
 }
 
+export type VehicleTypeRow = {
+  id: string
+  name: string
+  description: string
+  icon: string
+  eta_minutes: number
+  sort_order: number
+  is_active: boolean
+  updated_at: string | null
+}
+
 export type EffectiveFare = FareConfig & {
   fare_source: 'default' | 'schedule'
   schedule_id: string | null

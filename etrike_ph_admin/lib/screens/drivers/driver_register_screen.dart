@@ -566,12 +566,11 @@ class _DriverRegisterScreenState extends ConsumerState<DriverRegisterScreen> {
           idUploaded: _docFiles.containsKey(DocumentType.validId),
         ),
       2 => _DocumentStepPanel(
-          title: 'License & LTO documents',
-          subtitle: 'Link CR to a company e-trike unit from your fleet.',
+          title: "Driver's license & franchise",
+          subtitle:
+              'SulongRide provides company-owned e-trikes. OR/CR is not required — assign a fleet unit below.',
           documents: const [
             DocumentType.pdl,
-            DocumentType.ltoOr,
-            DocumentType.ltoCr,
             DocumentType.ltfrbCpc,
           ],
           files: _docFiles,
@@ -580,7 +579,10 @@ class _DriverRegisterScreenState extends ConsumerState<DriverRegisterScreen> {
           extraFields: _vehicles.isEmpty
               ? null
               : DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(labelText: 'Company unit (for CR plate)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Assigned e-trike unit',
+                    helperText: 'Company unit this driver will operate',
+                  ),
                   items: _vehicles
                       .map((v) => DropdownMenuItem(value: v.id, child: Text(v.displayLabel)))
                       .toList(),

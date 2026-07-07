@@ -36,6 +36,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/drivers': Users,
   '/drivers/onboarding': ClipboardList,
   '/fleet': Truck,
+  '/vehicle-types': Truck,
   '/training': GraduationCap,
   '/pending': Clock,
   '/approved': UserCheck,
