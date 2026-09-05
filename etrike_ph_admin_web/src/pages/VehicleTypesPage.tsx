@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import type { VehicleTypeRow } from '../types'
 import { deleteVehicleType, listVehicleTypes, setVehicleTypeActive, upsertVehicleType } from '../services/vehicleTypes'
@@ -31,7 +32,7 @@ function emptyForm(): FormState {
 }
 
 export function VehicleTypesPage() {
-  const { canWriteFleet } = useAuth()
+  const { canWriteFleet, operator, isSuperAdmin } = useAuth()
   const [rows, setRows] = useState<VehicleTypeRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -45,13 +46,13 @@ export function VehicleTypesPage() {
     setLoading(true)
     setError(null)
     try {
-      setRows(await listVehicleTypes())
+      setRows(await listVehicleTypes(isSuperAdmin ? undefined : operator?.place_id))
     } catch (e) {
-      setError(supabaseErrorMessage(e))
+      setError(supabaseErrorMessage(e, 'Vehicle types request failed'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isSuperAdmin, operator?.place_id])
 
   useEffect(() => {
     refresh()
@@ -98,7 +99,7 @@ export function VehicleTypesPage() {
       await refresh()
       cancelEdit()
     } catch (e2) {
-      setError(supabaseErrorMessage(e2))
+      setError(supabaseErrorMessage(e2, 'Failed to save vehicle type'))
     } finally {
       setSaving(false)
     }
@@ -111,7 +112,7 @@ export function VehicleTypesPage() {
       await setVehicleTypeActive(row.id, !row.is_active)
       await refresh()
     } catch (e) {
-      setError(supabaseErrorMessage(e))
+      setError(supabaseErrorMessage(e, 'Vehicle types request failed'))
     }
   }
 
@@ -124,7 +125,7 @@ export function VehicleTypesPage() {
       await deleteVehicleType(row.id)
       await refresh()
     } catch (e) {
-      setError(supabaseErrorMessage(e))
+      setError(supabaseErrorMessage(e, 'Vehicle types request failed'))
     }
   }
 
@@ -138,7 +139,7 @@ export function VehicleTypesPage() {
           </p>
         </div>
         {canWriteFleet ? (
-          <PrimaryButton label="Add vehicle type" onPressed={startCreate} />
+          <PrimaryButton onClick={startCreate}>Add vehicle type</PrimaryButton>
         ) : null}
       </div>
 
@@ -146,7 +147,7 @@ export function VehicleTypesPage() {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       ) : null}
 
-      <PanelCard>
+      <PanelCard title="Fleet vehicle types">
         {loading ? (
           <LoadingState />
         ) : (
@@ -192,8 +193,20 @@ export function VehicleTypesPage() {
                     <td className="py-3 pr-3 text-xs text-black/55">{r.updated_at ? formatDateTime(r.updated_at) : '—'}</td>
                     <td className="py-3 pr-0 text-right">
                       <div className="flex justify-end gap-2">
-                        <GhostButton label="Edit" onPressed={() => startEdit(r)} />
-                        {canWriteFleet ? <GhostButton label="Delete" onPressed={() => onDelete(r)} /> : null}
+                        <GhostButton onClick={() => startEdit(r)}>
+                          <span className="inline-flex items-center gap-1.5">
+                            <Pencil size={14} />
+                            Edit
+                          </span>
+                        </GhostButton>
+                        {canWriteFleet ? (
+                          <GhostButton onClick={() => onDelete(r)}>
+                            <span className="inline-flex items-center gap-1.5">
+                              <Trash2 size={14} />
+                              Delete
+                            </span>
+                          </GhostButton>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -212,7 +225,7 @@ export function VehicleTypesPage() {
       </PanelCard>
 
       {editingId ? (
-        <PanelCard>
+        <PanelCard title={editingId === '__new__' ? 'Add vehicle type' : 'Edit vehicle type'}>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -223,7 +236,7 @@ export function VehicleTypesPage() {
                   The Rider app shows only <span className="font-medium">Enabled</span> types.
                 </p>
               </div>
-              <GhostButton label="Cancel" onPressed={cancelEdit} />
+              <GhostButton onClick={cancelEdit}>Cancel</GhostButton>
             </div>
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -303,7 +316,9 @@ export function VehicleTypesPage() {
 
             {canWriteFleet ? (
               <div className="flex items-center justify-end gap-2">
-                <PrimaryButton label={saving ? 'Saving…' : 'Save'} onPressed={() => {}} type="submit" />
+                <PrimaryButton type="submit" disabled={saving}>
+                  {saving ? 'Saving…' : 'Save'}
+                </PrimaryButton>
               </div>
             ) : (
               <div className="text-sm text-black/55">Read-only access.</div>

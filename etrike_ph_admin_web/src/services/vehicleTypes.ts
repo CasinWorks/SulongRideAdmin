@@ -13,15 +13,18 @@ function mapVehicleType(row: Record<string, unknown>): VehicleTypeRow {
     sort_order: Number(row.sort_order ?? 0),
     is_active: Boolean(row.is_active ?? true),
     updated_at: row.updated_at != null ? String(row.updated_at) : null,
+    place_id: row.place_id != null ? String(row.place_id) : null,
   }
 }
 
-export async function listVehicleTypes(): Promise<VehicleTypeRow[]> {
-  const { data, error } = await supabase
+export async function listVehicleTypes(placeId?: string | null): Promise<VehicleTypeRow[]> {
+  let query = supabase
     .from('vehicle_types')
     .select('*')
     .order('sort_order', { ascending: true })
     .order('name', { ascending: true })
+  if (placeId) query = query.or(`place_id.eq.${placeId},place_id.is.null`)
+  const { data, error } = await query
   if (error) throwSupabaseError(error, 'Failed to load vehicle types')
   return (data ?? []).map((r) => mapVehicleType(r as Record<string, unknown>))
 }

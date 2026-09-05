@@ -7,6 +7,7 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../core/constants/keys.dart';
 import '../../../core/rider_launch_route.dart';
 import '../../../providers/auth_provider.dart';
+import '../../components/brand_logo.dart';
 import '../../components/custom_text_field.dart';
 import '../../components/google_sign_in_button.dart';
 import '../../components/primary_button.dart';
@@ -108,6 +109,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const Center(child: BrandLogo(size: 88)),
+              const SizedBox(height: 24),
               Text('Create account', style: AppTextStyles.headingLg),
               const SizedBox(height: 8),
               Text(

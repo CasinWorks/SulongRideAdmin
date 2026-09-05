@@ -32,6 +32,7 @@ function mapVehicle(row: Record<string, unknown>): FleetVehicle {
       row.last_maintenance_at != null ? String(row.last_maintenance_at) : null,
     next_maintenance_due:
       row.next_maintenance_due != null ? String(row.next_maintenance_due) : null,
+    place_id: row.place_id != null ? String(row.place_id) : null,
     created_at: String(row.created_at ?? ''),
     updated_at: String(row.updated_at ?? ''),
   }
@@ -76,9 +77,11 @@ async function operatorId(): Promise<string | null> {
 
 export async function listFleetVehicles(
   statusFilter?: VehicleStatus,
+  placeId?: string | null,
 ): Promise<FleetVehicleWithDriver[]> {
   let query = supabase.from('vehicles').select('*').order('unit_number')
   if (statusFilter) query = query.eq('status', statusFilter)
+  if (placeId) query = query.eq('place_id', placeId)
   const { data, error } = await query
   if (error) throwSupabaseError(error, 'Failed to load fleet')
 
@@ -130,6 +133,7 @@ export async function createVehicle(input: VehicleFormInput): Promise<FleetVehic
       status: input.status ?? 'available',
       notes: input.notes?.trim() || null,
       next_maintenance_due: input.next_maintenance_due || null,
+      place_id: input.place_id || null,
       created_at: now,
       updated_at: now,
     })
@@ -163,6 +167,7 @@ export async function updateVehicle(
   if (input.next_maintenance_due !== undefined) {
     payload.next_maintenance_due = input.next_maintenance_due || null
   }
+  if (input.place_id !== undefined) payload.place_id = input.place_id || null
 
   const { data, error } = await supabase
     .from('vehicles')
@@ -177,7 +182,20 @@ export async function updateVehicle(
     entityId: id,
     summary: `Updated fleet unit ${data.unit_number}`,
   })
-  return mapVehicle(data as Record<string, unknown>)
+  const mapped = mapVehicle(data as Record<string, unknown>)
+  if (input.place_id !== undefined && mapped.assigned_driver_id) {
+    const driverPatch: Record<string, unknown> = { place_id: mapped.place_id }
+    if (mapped.place_id) {
+      const { data: place } = await supabase
+        .from('places')
+        .select('name, display_name')
+        .eq('id', mapped.place_id)
+        .maybeSingle()
+      if (place) driverPatch.station = String(place.display_name || place.name)
+    }
+    await supabase.from('drivers').update(driverPatch).eq('id', mapped.assigned_driver_id)
+  }
+  return mapped
 }
 
 export async function retireVehicle(id: string): Promise<void> {
@@ -329,11 +347,23 @@ async function activateVehicleAssignment({
     updated_at: now,
   }).eq('id', vehicleId)
 
-  await supabase.from('drivers').update({
+  const driverPatch: Record<string, unknown> = {
     trike_plate_number: vehicle.plate_number,
     trike_model: vehicle.model,
     station: DEFAULT_STATION,
-  }).eq('id', driverId)
+  }
+  if (vehicle.place_id) {
+    driverPatch.place_id = vehicle.place_id
+    const { data: place } = await supabase
+      .from('places')
+      .select('name, display_name')
+      .eq('id', vehicle.place_id)
+      .maybeSingle()
+    if (place) {
+      driverPatch.station = String(place.display_name || place.name || DEFAULT_STATION)
+    }
+  }
+  await supabase.from('drivers').update(driverPatch).eq('id', driverId)
 
   await supabase.from('vehicle_assignments').insert({
     vehicle_id: vehicleId,

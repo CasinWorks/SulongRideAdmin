@@ -10,6 +10,7 @@ import '../../../core/eco/eco_local_store.dart';
 import '../../../core/eco/eco_models.dart';
 import '../../../models/trip_model.dart';
 import '../../../providers/trip_provider.dart';
+import '../../components/service_area_chip.dart';
 import '../../components/eco/eco_animations.dart';
 import '../../components/eco/eco_drawer.dart';
 import '../../components/eco/eco_metric_tile.dart';
@@ -21,6 +22,7 @@ typedef BookRideCallback = void Function({
   required double fare,
   required String vehicleTypeId,
   String? promoCode,
+  String paymentMethod,
 });
 
 enum LocationSearchTarget { pickup, dropoff }
@@ -48,6 +50,7 @@ class BookingBottomSheet extends ConsumerStatefulWidget {
     this.onRetryLocation,
     this.onPinOnMap,
     this.showPinOnMapOption = false,
+    this.serviceAreaLabel = 'Malagasang 1-B',
   });
 
   final List<Map<String, dynamic>> predictions;
@@ -70,6 +73,7 @@ class BookingBottomSheet extends ConsumerStatefulWidget {
   final VoidCallback? onRetryLocation;
   final VoidCallback? onPinOnMap;
   final bool showPinOnMapOption;
+  final String serviceAreaLabel;
 
   @override
   ConsumerState<BookingBottomSheet> createState() => _BookingBottomSheetState();
@@ -78,6 +82,7 @@ class BookingBottomSheet extends ConsumerStatefulWidget {
 class _BookingBottomSheetState extends ConsumerState<BookingBottomSheet> {
   bool _hubTab = false;
   String _vehicleTypeId = 'bike';
+  String _paymentMethod = 'cash';
   final _promoController = TextEditingController();
   EcoPromoCode? _appliedPromo;
   String? _promoError;
@@ -261,9 +266,14 @@ class _BookingBottomSheetState extends ConsumerState<BookingBottomSheet> {
       const SizedBox(height: 6),
       Text(
         widget.searchTarget == LocationSearchTarget.pickup
-            ? 'Set where the driver should pick up — book for yourself or someone else.'
-            : 'Search where you want to go.',
+            ? 'Set pickup inside ${widget.serviceAreaLabel}.'
+            : 'Search a destination inside ${widget.serviceAreaLabel}.',
         style: AppTextStyles.bodySecondary.copyWith(fontSize: 12),
+      ),
+      const SizedBox(height: 10),
+      const Align(
+        alignment: Alignment.centerLeft,
+        child: ServiceAreaChip(),
       ),
       const SizedBox(height: 12),
       TextField(
@@ -272,8 +282,8 @@ class _BookingBottomSheetState extends ConsumerState<BookingBottomSheet> {
         cursorColor: AppColors.ecoGreen,
         decoration: InputDecoration(
           hintText: widget.searchTarget == LocationSearchTarget.pickup
-              ? 'Search pickup in Carmona / Cavite'
-              : 'Search destination in Carmona / Cavite',
+              ? 'Search pickup in ${widget.serviceAreaLabel}'
+              : 'Search destination in ${widget.serviceAreaLabel}',
           hintStyle: AppTextStyles.bodySecondary,
           prefixIcon: Icon(
             widget.searchTarget == LocationSearchTarget.pickup
@@ -472,6 +482,28 @@ class _BookingBottomSheetState extends ConsumerState<BookingBottomSheet> {
         if (_promoError != null)
           Text(_promoError!, style: AppTextStyles.bodySecondary.copyWith(color: AppColors.error)),
         const SizedBox(height: 12),
+        Text('Payment', style: AppTextStyles.label),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _PayChip(
+                label: 'Cash',
+                selected: _paymentMethod == 'cash',
+                onTap: () => setState(() => _paymentMethod = 'cash'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _PayChip(
+                label: 'PayMongo QR',
+                selected: _paymentMethod == 'paymongo_qr',
+                onTap: () => setState(() => _paymentMethod = 'paymongo_qr'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
         Row(
           children: [
             Text('Total fare', style: AppTextStyles.headingSm),
@@ -491,11 +523,47 @@ class _BookingBottomSheetState extends ConsumerState<BookingBottomSheet> {
                     fare: fare,
                     vehicleTypeId: effectiveVehicleId,
                     promoCode: _appliedPromo?.code,
+                    paymentMethod: _paymentMethod,
                   )
               : null,
         ),
       ],
     ];
+  }
+}
+
+class _PayChip extends StatelessWidget {
+  const _PayChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.forestLight : AppColors.forestMedium,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.body.copyWith(
+              color: selected ? AppColors.ecoCream : AppColors.ecoCreamDark,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

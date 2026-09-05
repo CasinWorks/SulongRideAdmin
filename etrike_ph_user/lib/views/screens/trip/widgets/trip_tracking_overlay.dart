@@ -290,6 +290,16 @@ class _TripTrackingOverlayState extends ConsumerState<TripTrackingOverlay> {
                       ),
                     ],
                   ),
+                  if (widget.trip.isPaymongoQr && !widget.trip.isPaid) ...[
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => context.push('/trip/${widget.trip.id}/pay'),
+                      child: Text(
+                        'Open PayMongo QR',
+                        style: AppTextStyles.label.copyWith(color: AppColors.ecoGreenLight),
+                      ),
+                    ),
+                  ],
                   if (widget.trip.status != 'ongoing') ...[
                     const SizedBox(height: 8),
                     TextButton(

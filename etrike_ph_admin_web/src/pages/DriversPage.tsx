@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 import { fetchWeeklyTripsByDriver, listDrivers } from '../services/admin'
 import type { DriverRow } from '../types'
 import { driverDisplayName, formatDate } from '../lib/format'
 import { ErrorState, LoadingState, PanelCard, StatusPill, adminSearchInputCls } from '../components/ui/adminPageUi'
 
 export function DriversPage() {
+  const { operator, isSuperAdmin } = useAuth()
   const [drivers, setDrivers] = useState<DriverRow[]>([])
   const [weekly, setWeekly] = useState<Record<string, number>>({})
   const [query, setQuery] = useState('')
@@ -13,14 +15,14 @@ export function DriversPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([listDrivers(), fetchWeeklyTripsByDriver()])
+    Promise.all([listDrivers(undefined, isSuperAdmin ? undefined : operator?.place_id), fetchWeeklyTripsByDriver()])
       .then(([d, w]) => {
         setDrivers(d)
         setWeekly(w)
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load drivers'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [isSuperAdmin, operator?.place_id])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()

@@ -7,8 +7,10 @@ import '../../../core/constants/app_decorations.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/onboarding_provider.dart';
+import '../../../providers/place_provider.dart';
 import '../../components/custom_text_field.dart';
 import '../../components/primary_button.dart';
+import '../../components/service_village_picker.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -117,6 +119,42 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       Text(
                         'Plate and unit are managed by SulongRide. You cannot edit them here.',
                         style: AppTextStyles.bodySecondary.copyWith(fontSize: 12, height: 1.4),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            Builder(
+              builder: (context) {
+                final profile = ref.watch(driverProfileProvider).asData?.value;
+                final places = ref.watch(activePlacesProvider).asData?.value ?? const [];
+                var village = 'Not set — tap to choose';
+                for (final place in places) {
+                  if (place.id == profile?.placeId) {
+                    village = place.label;
+                    break;
+                  }
+                }
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: AppDecorations.ecoCard,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('Service village', style: AppTextStyles.headingSm.copyWith(fontSize: 16)),
+                      const SizedBox(height: 6),
+                      Text(village, style: AppTextStyles.body),
+                      const SizedBox(height: 6),
+                      Text(
+                        'You can set this yourself. It also moves your assigned e-trike to that village.',
+                        style: AppTextStyles.bodySecondary.copyWith(fontSize: 12, height: 1.4),
+                      ),
+                      const SizedBox(height: 12),
+                      PrimaryButton(
+                        label: 'Change village',
+                        onPressed: () => showServiceVillagePicker(context, ref),
                       ),
                     ],
                   ),

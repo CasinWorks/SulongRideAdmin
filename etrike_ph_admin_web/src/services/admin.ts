@@ -225,9 +225,10 @@ export async function countPendingOperators(): Promise<number> {
   return count ?? 0
 }
 
-export async function listDrivers(approvalStatus?: string): Promise<DriverRow[]> {
+export async function listDrivers(approvalStatus?: string, placeId?: string | null): Promise<DriverRow[]> {
   let query = supabase.from('drivers').select('*')
   if (approvalStatus) query = query.eq('approval_status', approvalStatus)
+  if (placeId) query = query.eq('place_id', placeId)
   const { data, error } = await query.order('created_at', { ascending: false })
   if (error) throwSupabaseError(error, 'Failed to load drivers')
   return (data ?? []).map((r) => mapDriver(r as Record<string, unknown>))

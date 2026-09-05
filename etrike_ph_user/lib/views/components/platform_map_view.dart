@@ -18,19 +18,27 @@ class PlatformMapView extends StatelessWidget {
     required this.initialTarget,
     required this.markers,
     this.polylines = const {},
+    this.circles = const {},
     this.onMapCreated,
     this.onMapTap,
     this.myLocationEnabled = true,
     this.mapStyle,
+    this.cameraTargetBounds,
+    this.minZoom,
+    this.initialZoom = 15,
   });
 
   final LatLng initialTarget;
   final Set<Marker> markers;
   final Set<Polyline> polylines;
+  final Set<Circle> circles;
   final void Function(GoogleMapController controller)? onMapCreated;
   final void Function(LatLng position)? onMapTap;
   final bool myLocationEnabled;
   final String? mapStyle;
+  final LatLngBounds? cameraTargetBounds;
+  final double? minZoom;
+  final double initialZoom;
 
   @override
   Widget build(BuildContext context) {
@@ -46,9 +54,16 @@ class PlatformMapView extends StatelessWidget {
       color: const Color(0xFFE8ECF0),
       child: GoogleMap(
       style: mapStyle,
-      initialCameraPosition: CameraPosition(target: initialTarget, zoom: 15),
+      initialCameraPosition: CameraPosition(target: initialTarget, zoom: initialZoom),
       markers: markers,
       polylines: polylines,
+      circles: circles,
+      cameraTargetBounds: cameraTargetBounds == null
+          ? CameraTargetBounds.unbounded
+          : CameraTargetBounds(cameraTargetBounds),
+      minMaxZoomPreference: minZoom == null
+          ? MinMaxZoomPreference.unbounded
+          : MinMaxZoomPreference(minZoom, 18),
       myLocationEnabled:
           myLocationEnabled && !PlatformFlags.disableGoogleMapsMyLocationLayer,
       myLocationButtonEnabled: false,

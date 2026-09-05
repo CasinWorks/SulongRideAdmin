@@ -38,6 +38,7 @@ export function mapDriver(row: Record<string, unknown>): DriverRow {
     shift_end: (row.shift_end as string) ?? '14:00:00',
     emergency_contact: (row.emergency_contact as string) ?? '',
     start_date: (row.start_date as string) ?? null,
+    place_id: (row.place_id as string) ?? null,
   }
 }
 
@@ -69,6 +70,7 @@ export function mapOperator(row: Record<string, unknown>): OperatorRow {
     approved_by: (row.approved_by as string) ?? null,
     approved_at: (row.approved_at as string) ?? null,
     created_at: (row.created_at as string) ?? null,
+    place_id: (row.place_id as string) ?? null,
   }
 }
 

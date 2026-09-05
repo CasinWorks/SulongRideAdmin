@@ -13,9 +13,11 @@ import '../../../core/constants/app_map_styles.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/location_permission.dart';
 import '../../../core/local_notifications_service.dart';
+import '../../../models/driver_model.dart';
 import '../../../models/trip_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/driver_eligibility_provider.dart';
+import '../../../providers/hr_provider.dart';
 import '../../../providers/location_provider.dart';
 import '../../../providers/onboarding_provider.dart';
 import '../../../providers/training_provider.dart';
@@ -23,7 +25,6 @@ import '../../../providers/trip_provider.dart';
 import '../../../providers/maintenance_provider.dart';
 import '../maintenance/maintenance_screen.dart';
 import '../../components/platform_map_view.dart';
-import 'incoming_trip_sheet.dart';
 
 class DriverHomeScreen extends ConsumerStatefulWidget {
   const DriverHomeScreen({super.key});
@@ -60,6 +61,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
           authRepo: ref.read(authRepositoryProvider),
           trainingRepo: ref.read(trainingRepositoryProvider),
           onboardingRepo: ref.read(onboardingRepositoryProvider),
+          hrRepo: ref.read(hrRepositoryProvider),
           driverId: uid,
         );
         if (!eligibility.canReceiveTrips) {
@@ -69,6 +71,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               );
           _online.value = false;
           ref.read(driverOnlineProvider.notifier).state = false;
+          ref.read(locationTickerProvider).stop();
         } else {
           _online.value = true;
           ref.read(driverOnlineProvider.notifier).state = true;
@@ -130,14 +133,29 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
 
     if (value) {
       try {
+        final profile =
+            await ref.read(authRepositoryProvider).fetchDriverProfile();
+        if (profile != null && !profile.canStartShift()) {
+          if (mounted) {
+            await _showNotOnShiftDialog(profile.shiftWindowLabel);
+          }
+          return;
+        }
+
         final eligibility = await fetchDriverTripEligibility(
           authRepo: ref.read(authRepositoryProvider),
           trainingRepo: ref.read(trainingRepositoryProvider),
           onboardingRepo: ref.read(onboardingRepositoryProvider),
+          hrRepo: ref.read(hrRepositoryProvider),
           driverId: uid,
         );
         if (!eligibility.canReceiveTrips) {
-          if (mounted) {
+          if (!mounted) return;
+          final onboardingBlocked = !eligibility.isApproved ||
+              !eligibility.documentsComplete ||
+              !eligibility.trainingComplete ||
+              !eligibility.hasAssignedVehicle;
+          if (onboardingBlocked) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
@@ -152,10 +170,18 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
             } else if (!eligibility.trainingComplete) {
               context.push('/training');
             }
+            return;
           }
-          return;
+          if (!eligibility.timedIn) {
+            final timedIn = await _promptTimeInFirst(profile);
+            if (!timedIn) return;
+          } else {
+            return;
+          }
         }
-      } catch (_) {}
+      } catch (_) {
+        return;
+      }
     }
 
     try {
@@ -206,6 +232,71 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     return message;
   }
 
+  Future<void> _showNotOnShiftDialog(String shiftLabel) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Not your shift'),
+        content: Text(
+          'You can only go Online during your scheduled hours.\n\n$shiftLabel',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool> _promptTimeInFirst(DriverModel? profile) async {
+    final action = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Time in first'),
+        content: const Text(
+          'Clock in for your shift before going Online. Time-in is required to receive trip requests.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('cancel'),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop('attendance'),
+            child: const Text('Open Time in'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop('timeIn'),
+            child: const Text('Time in now'),
+          ),
+        ],
+      ),
+    );
+
+    if (action == 'attendance') {
+      if (mounted) context.push('/attendance');
+      return false;
+    }
+    if (action != 'timeIn') return false;
+
+    try {
+      await ref.read(hrRepositoryProvider).clockIn(profile: profile);
+      ref.invalidate(openAttendanceProvider);
+      ref.invalidate(attendanceHistoryProvider);
+      ref.invalidate(driverStatsProvider);
+      return true;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pollError = ref.watch(requestedTripsPollErrorProvider);
@@ -215,10 +306,30 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     final profile = ref.watch(driverProfileProvider).asData?.value;
     final approvalPending = profile != null && !profile.isApproved;
 
-    ref.listen<AsyncValue<TripModel?>>(driverActiveTripProvider, (_, next) {
+    ref.listen<bool>(driverOnlineProvider, (previous, next) {
+      _online.value = next;
+    });
+    ref.listen<String?>(driverForcedOfflineReasonProvider, (previous, next) {
+      if (next == null || !context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(next), duration: const Duration(seconds: 6)),
+      );
+      ref.read(driverForcedOfflineReasonProvider.notifier).state = null;
+    });
+
+    ref.listen<AsyncValue<TripModel?>>(driverActiveTripProvider, (previous, next) {
       unawaited(
         DriverTripLiveActivityService.reconcileWithTrip(next.asData?.value),
       );
+      final trip = next.asData?.value;
+      final prevId = previous?.asData?.value?.id;
+      if (trip == null || trip.id == prevId) return;
+      if (trip.status != 'accepted' && trip.status != 'ongoing') return;
+      if (!context.mounted) return;
+      final loc = GoRouterState.of(context).uri.path;
+      if (loc.startsWith('/trip/')) return;
+      unawaited(LocalNotificationsService.showIncomingTrip());
+      context.go('/trip/${trip.id}');
     });
 
     ref.listen<AsyncValue<List<TripModel>>>(requestedTripsProvider, (previous, next) {
@@ -234,6 +345,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
             authRepo: ref.read(authRepositoryProvider),
             trainingRepo: ref.read(trainingRepositoryProvider),
             onboardingRepo: ref.read(onboardingRepositoryProvider),
+            hrRepo: ref.read(hrRepositoryProvider),
             driverId: uid,
           );
           if (!eligibility.canReceiveTrips) return;
@@ -247,11 +359,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         } catch (_) {}
         if (trips.isEmpty) return;
 
-        final declined = ref.read(declinedIncomingTripIdsProvider);
-        final pending = trips.where((t) => !declined.contains(t.id)).toList();
-        if (pending.isEmpty) return;
-
-        final newest = pending.reduce(
+        final newest = trips.reduce(
           (a, b) => a.createdAt.isAfter(b.createdAt) ? a : b,
         );
         final last = ref.read(lastIncomingTripPingProvider);
@@ -261,7 +369,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         if (kDebugMode && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Trip request received (${newest.pickupAddress})'),
+              content: Text('Trip assigned (${newest.pickupAddress})'),
               duration: const Duration(seconds: 2),
             ),
           );
@@ -270,23 +378,19 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         if (!context.mounted) return;
 
         _incomingSheetShowing = true;
-        bool? accepted;
         try {
-          accepted = await showIncomingTripSheet(
-            context: context,
-            trip: newest,
-          );
-        } finally {
+          if (newest.driverId == null) {
+            await ref.read(tripRepositoryProvider).acceptTrip(
+                  tripId: newest.id,
+                  driverId: uid,
+                );
+          }
+        } catch (_) {
           _incomingSheetShowing = false;
-        }
-        if (!context.mounted) return;
-        if (accepted != true) {
-          ref.read(declinedIncomingTripIdsProvider.notifier).state = {
-            ...ref.read(declinedIncomingTripIdsProvider),
-            newest.id,
-          };
           return;
         }
+        _incomingSheetShowing = false;
+        if (!context.mounted) return;
         context.go('/trip/${newest.id}');
       });
     });

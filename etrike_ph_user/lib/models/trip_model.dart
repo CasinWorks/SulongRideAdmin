@@ -68,6 +68,11 @@ class TripModel {
     this.distanceKm,
     required this.createdAt,
     this.completedAt,
+    this.placeId,
+    this.paymentMethod = 'cash',
+    this.paymentStatus = 'unpaid',
+    this.paymentRef,
+    this.paidAt,
     this.rating,
     this.reviewText,
     this.complaintTags = const [],
@@ -88,6 +93,11 @@ class TripModel {
   final double? distanceKm;
   final DateTime createdAt;
   final DateTime? completedAt;
+  final String? placeId;
+  final String paymentMethod;
+  final String paymentStatus;
+  final String? paymentRef;
+  final DateTime? paidAt;
   final int? rating;
   final String? reviewText;
   final List<String> complaintTags;
@@ -95,6 +105,8 @@ class TripModel {
 
   bool get isTerminal => status == 'completed' || status == 'cancelled';
   bool get hasRating => rating != null;
+  bool get isPaymongoQr => paymentMethod == 'paymongo_qr';
+  bool get isPaid => paymentStatus == 'paid' || paidAt != null;
 
   static List<String> _parseTags(Object? raw) {
     if (raw is List) return raw.map((e) => e.toString()).toList();
@@ -121,6 +133,11 @@ class TripModel {
       completedAt: json['completed_at'] != null
           ? DateTime.tryParse(json['completed_at'] as String)
           : null,
+      placeId: json['place_id'] as String?,
+      paymentMethod: json['payment_method'] as String? ?? 'cash',
+      paymentStatus: json['payment_status'] as String? ?? 'unpaid',
+      paymentRef: json['payment_ref'] as String?,
+      paidAt: json['paid_at'] != null ? DateTime.tryParse(json['paid_at'] as String) : null,
       rating: (json['rating'] as num?)?.toInt(),
       reviewText: json['review_text'] as String?,
       complaintTags: _parseTags(json['complaint_tags']),

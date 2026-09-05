@@ -8,6 +8,7 @@ import '../core/eco/eco_models.dart';
 import '../repositories/trip_repository.dart';
 import '../repositories/vehicle_types_repository.dart';
 import 'auth_provider.dart';
+import 'place_provider.dart';
 
 final dioProvider = Provider<Dio>((ref) => Dio());
 
@@ -29,7 +30,10 @@ final vehicleTypesRepositoryProvider = Provider<VehicleTypesRepository>(
 );
 
 final vehicleTypesProvider = FutureProvider<List<EcoVehicleOption>>((ref) async {
-  return ref.watch(vehicleTypesRepositoryProvider).listActiveVehicleTypes();
+  final place = ref.watch(selectedPlaceProvider);
+  return ref.watch(vehicleTypesRepositoryProvider).listActiveVehicleTypes(
+        placeId: place.isPersisted ? place.id : null,
+      );
 });
 
 Stream<TripModel?> _watchTrip(TripRepository repo, String tripId) async* {

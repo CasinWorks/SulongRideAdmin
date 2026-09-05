@@ -35,6 +35,8 @@ import {
 import { adminInputCls } from '../components/ui/AdminUi'
 import { ConfirmPermanentDeleteModal } from '../components/ui/ConfirmPermanentDeleteModal'
 import { useAuth } from '../hooks/useAuth'
+import { listPlaces } from '../services/places'
+import type { PlaceRow } from '../types'
 
 type DriverOption = { id: string; full_name: string; email: string }
 
@@ -46,6 +48,7 @@ export function FleetVehiclePage() {
   const [assignments, setAssignments] = useState<VehicleAssignmentRow[]>([])
   const [logs, setLogs] = useState<VehicleMaintenanceLog[]>([])
   const [drivers, setDrivers] = useState<DriverOption[]>([])
+  const [places, setPlaces] = useState<PlaceRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -71,12 +74,14 @@ export function FleetVehiclePage() {
       listVehicleAssignments(id),
       listMaintenanceLogs(id),
       listDriversForAssign(),
+      listPlaces().catch(() => [] as PlaceRow[]),
     ])
-      .then(([v, a, l, d]) => {
+      .then(([v, a, l, d, placeRows]) => {
         setVehicle(v)
         setAssignments(a)
         setLogs(l)
         setDrivers(d)
+        setPlaces(placeRows)
         if (v) {
           setEditForm({
             unit_number: v.unit_number,
@@ -88,6 +93,7 @@ export function FleetVehiclePage() {
             status: v.status,
             notes: v.notes ?? '',
             next_maintenance_due: v.next_maintenance_due,
+            place_id: v.place_id,
           })
         }
       })
@@ -251,6 +257,19 @@ export function FleetVehiclePage() {
                   setEditForm({ ...editForm, boundary_fee: Number(e.target.value) })
                 }
               />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="text-sm font-medium text-black/70">Service village</span>
+              <select
+                className={adminInputCls}
+                value={editForm.place_id ?? ''}
+                onChange={(e) => setEditForm({ ...editForm, place_id: e.target.value || null })}
+              >
+                <option value="">Unassigned</option>
+                {places.map((p) => (
+                  <option key={p.id} value={p.id}>{p.display_name || p.name}</option>
+                ))}
+              </select>
             </label>
             <label className="block sm:col-span-2">
               <span className="text-sm font-medium text-black/70">Notes</span>

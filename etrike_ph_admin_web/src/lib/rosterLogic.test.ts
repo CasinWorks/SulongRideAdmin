@@ -21,6 +21,7 @@ const baseDriver = (overrides: Partial<DriverRow> = {}): DriverRow => ({
   shift_end: '14:00:00',
   emergency_contact: '',
   start_date: null,
+  place_id: null,
   ...overrides,
 })
 

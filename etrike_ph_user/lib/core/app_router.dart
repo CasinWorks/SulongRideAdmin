@@ -16,6 +16,7 @@ import '../views/screens/maintenance/maintenance_screen.dart';
 import '../views/screens/onboarding/onboarding_screen.dart';
 import '../views/screens/settings/settings_screen.dart';
 import '../views/screens/splash/splash_screen.dart';
+import '../views/screens/trip/paymongo_qr_screen.dart';
 import '../views/screens/trip/trip_active_screen.dart';
 import '../views/screens/trip/trip_completed_screen.dart';
 
@@ -79,6 +80,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/home',
         builder: (context, state) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: '/trip/:id/pay',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return PaymongoQrScreen(tripId: id);
+        },
       ),
       GoRoute(
         path: '/trip/:id/completed',

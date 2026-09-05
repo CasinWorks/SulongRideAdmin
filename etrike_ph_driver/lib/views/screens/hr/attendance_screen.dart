@@ -5,7 +5,11 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_decorations.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../providers/driver_eligibility_provider.dart';
 import '../../../providers/hr_provider.dart';
+import '../../../providers/location_provider.dart';
+import '../../../providers/trip_provider.dart';
 import '../../components/primary_button.dart';
 
 class AttendanceScreen extends ConsumerWidget {
@@ -22,6 +26,7 @@ class AttendanceScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final openAsync = ref.watch(openAttendanceProvider);
     final historyAsync = ref.watch(attendanceHistoryProvider);
+    final profile = ref.watch(driverProfileProvider).asData?.value;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -41,7 +46,7 @@ class AttendanceScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           children: [
             Text(
-              'Clock in at the start of your shift and clock out when you finish. This is recorded for HR and payroll.',
+              'Time in at the start of your scheduled shift before going Online. Open shifts auto time out after 24 hours.',
               style: AppTextStyles.bodySecondary.copyWith(height: 1.4),
             ),
             const SizedBox(height: 20),
@@ -72,11 +77,30 @@ class AttendanceScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
+                      if (profile != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Shift: ${profile.shiftWindowLabel}',
+                          style: AppTextStyles.bodySecondary,
+                        ),
+                      ],
                       if (open case final record?) ...[
                         const SizedBox(height: 8),
                         Text(
                           'Since ${DateFormat.yMMMd().add_jm().format(record.clockIn.toLocal())}',
                           style: AppTextStyles.bodySecondary,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Auto time-out at ${DateFormat.jm().format(record.autoTimeoutAt.toLocal())} (24 hours)',
+                          style: AppTextStyles.bodySecondary.copyWith(fontSize: 12),
+                        ),
+                      ],
+                      if (!timedIn && profile != null && !profile.canStartShift()) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          'Time in is only available during your scheduled shift.',
+                          style: AppTextStyles.bodySecondary.copyWith(fontSize: 12),
                         ),
                       ],
                       const SizedBox(height: 20),
@@ -88,12 +112,15 @@ class AttendanceScreen extends ConsumerWidget {
                             final repo = ref.read(hrRepositoryProvider);
                             if (timedIn) {
                               await repo.clockOut();
+                              ref.read(driverOnlineProvider.notifier).state = false;
+                              ref.read(locationTickerProvider).stop();
                             } else {
-                              await repo.clockIn();
+                              await repo.clockIn(profile: profile);
                             }
                             ref.invalidate(openAttendanceProvider);
                             ref.invalidate(attendanceHistoryProvider);
                             ref.invalidate(driverStatsProvider);
+                            ref.invalidate(driverTripEligibilityProvider);
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(

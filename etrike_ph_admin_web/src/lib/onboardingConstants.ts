@@ -88,7 +88,7 @@ export const EMPLOYMENT_TYPES = [
 
 export const SHIFT_OPTIONS = ['Day shift', 'Night shift', 'Split shift', 'Flexible'] as const
 
-export const DEFAULT_STATION = 'Carmona Central'
+export const DEFAULT_STATION = 'Malagasang 1-B'
 
 export const STORAGE_BUCKET = 'driver-documents'
 

@@ -15,6 +15,7 @@ class DriverModel {
     this.isOnline = false,
     this.currentLat,
     this.currentLng,
+    this.placeId,
   });
 
   final String id;
@@ -28,6 +29,7 @@ class DriverModel {
   final bool isOnline;
   final double? currentLat;
   final double? currentLng;
+  final String? placeId;
 
   LatLng? get latLng {
     if (currentLat == null || currentLng == null) return null;
@@ -47,6 +49,7 @@ class DriverModel {
       isOnline: json['is_online'] as bool? ?? false,
       currentLat: (json['current_lat'] as num?)?.toDouble(),
       currentLng: (json['current_lng'] as num?)?.toDouble(),
+      placeId: json['place_id'] as String?,
     );
   }
 }

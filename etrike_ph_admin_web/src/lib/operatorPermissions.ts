@@ -93,6 +93,7 @@ const ROUTE_ACCESS: Record<string, OperatorRole[] | 'all'> = {
   '/leave': ['super_admin', 'admin', 'viewer', 'hr', 'dispatcher'],
   '/payroll': ['super_admin', 'admin', 'viewer', 'hr'],
   '/fare': ['super_admin', 'admin', 'viewer'],
+  '/places': ['super_admin', 'admin', 'viewer'],
   '/maintenance': ['super_admin', 'admin'],
   '/team': ['super_admin', 'admin'],
 }
@@ -153,7 +154,10 @@ export function operatorNavRoutes(
     { to: '/leave', label: 'Leave' },
     { to: '/payroll', label: 'Payroll' },
   ]
-  const finance: NavRoute[] = [{ to: '/fare', label: 'Fare' }]
+  const finance: NavRoute[] = [
+    { to: '/fare', label: 'Fare' },
+    { to: '/places', label: 'Places' },
+  ]
   const tail: NavRoute[] = [{ to: '/audit', label: 'Audit logs' }]
 
   switch (role) {

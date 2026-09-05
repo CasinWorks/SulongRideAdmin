@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/attendance_record.dart';
+import '../models/driver_model.dart';
 import '../models/driver_stats.dart';
 import '../models/leave_request.dart';
 import '../utils/trip_rating_enrichment.dart';
@@ -68,6 +69,8 @@ class HrRepository {
     double? avg(Iterable<double> v) =>
         v.isEmpty ? null : v.reduce((a, b) => a + b) / v.length;
 
+    await autoCloseStaleAttendance();
+
     final attendance = await _client
         .from('driver_attendance')
         .select('id, driver_id, clock_in, clock_out, created_at')
@@ -97,7 +100,7 @@ class HrRepository {
     );
   }
 
-  Future<AttendanceRecord?> fetchOpenAttendance() async {
+  Future<AttendanceRecord?> _fetchOpenAttendanceRaw() async {
     final id = _driverId;
     if (id == null) return null;
     try {
@@ -114,6 +117,27 @@ class HrRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<AttendanceRecord?> fetchOpenAttendance() async {
+    await autoCloseStaleAttendance();
+    return _fetchOpenAttendanceRaw();
+  }
+
+  /// Closes an open time-in older than 24 hours and takes the driver offline.
+  /// Returns true when a stale shift was closed.
+  Future<bool> autoCloseStaleAttendance() async {
+    final id = _driverId;
+    if (id == null) return false;
+    final open = await _fetchOpenAttendanceRaw();
+    if (open == null || !open.isStale) return false;
+    await _closeAttendance(
+      open,
+      notes: 'auto_timeout_24h',
+      goOffline: true,
+      summary: 'Shift auto timed out after 24 hours',
+    );
+    return true;
   }
 
   Future<List<AttendanceRecord>> fetchAttendanceHistory({int limit = 30}) async {
@@ -135,11 +159,16 @@ class HrRepository {
     }
   }
 
-  Future<void> clockIn() async {
+  Future<void> clockIn({DriverModel? profile}) async {
     final id = _driverId;
     if (id == null) throw StateError('Not signed in');
     final open = await fetchOpenAttendance();
     if (open != null) throw StateError('You are already timed in.');
+    if (profile != null && !profile.canStartShift()) {
+      throw StateError(
+        'You can only time in during your scheduled shift (${profile.shiftWindowLabel}).',
+      );
+    }
     await _client.from('driver_attendance').insert({'driver_id': id});
     await _audit.log(
       action: 'attendance.clock_in',
@@ -152,16 +181,45 @@ class HrRepository {
   Future<void> clockOut() async {
     final id = _driverId;
     if (id == null) throw StateError('Not signed in');
-    final open = await fetchOpenAttendance();
+    final open = await _fetchOpenAttendanceRaw();
     if (open == null) throw StateError('No active time-in found.');
-    await _client.from('driver_attendance').update({
+    await _closeAttendance(
+      open,
+      goOffline: true,
+      summary: 'Driver clocked out',
+    );
+  }
+
+  Future<void> _closeAttendance(
+    AttendanceRecord open, {
+    String? notes,
+    required bool goOffline,
+    required String summary,
+  }) async {
+    final id = _driverId;
+    if (id == null) throw StateError('Not signed in');
+    final updates = <String, dynamic>{
       'clock_out': DateTime.now().toUtc().toIso8601String(),
-    }).eq('id', open.id);
+    };
+    if (notes != null && notes.isNotEmpty) {
+      updates['notes'] = notes;
+    }
+    await _client.from('driver_attendance').update(updates).eq('id', open.id);
+    if (goOffline) {
+      try {
+        await _client.from('drivers').update({
+          'is_online': false,
+          'is_available': false,
+        }).eq('id', id);
+      } catch (_) {}
+    }
     await _audit.log(
-      action: 'attendance.clock_out',
+      action: notes == 'auto_timeout_24h'
+          ? 'attendance.auto_timeout'
+          : 'attendance.clock_out',
       entityType: 'driver_attendance',
       entityId: open.id,
-      summary: 'Driver clocked out',
+      summary: summary,
     );
   }
 

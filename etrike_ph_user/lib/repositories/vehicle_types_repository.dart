@@ -7,16 +7,31 @@ class VehicleTypesRepository {
 
   final SupabaseClient _client;
 
-  Future<List<EcoVehicleOption>> listActiveVehicleTypes() async {
-    final rows = await _client
-        .from('vehicle_types')
-        .select('id, name, description, icon, eta_minutes, sort_order')
-        .order('sort_order', ascending: true)
-        .order('name', ascending: true)
-        .timeout(const Duration(seconds: 8));
+  Future<List<EcoVehicleOption>> listActiveVehicleTypes({String? placeId}) async {
+    List<dynamic> rows;
+    try {
+      rows = await _client
+          .from('vehicle_types')
+          .select('id, name, description, icon, eta_minutes, sort_order, is_active, place_id')
+          .order('sort_order', ascending: true)
+          .order('name', ascending: true)
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {
+      rows = await _client
+          .from('vehicle_types')
+          .select('id, name, description, icon, eta_minutes, sort_order')
+          .order('sort_order', ascending: true)
+          .order('name', ascending: true)
+          .timeout(const Duration(seconds: 8));
+    }
 
-    final list = (rows as List<dynamic>)
+    final list = rows
         .whereType<Map<String, dynamic>>()
+        .where((r) {
+          if (r['is_active'] == false) return false;
+          if (placeId == null) return true;
+          return r['place_id'] == null || r['place_id'] == placeId;
+        })
         .map(
           (r) => EcoVehicleOption(
             id: (r['id'] as String?)?.trim() ?? '',

@@ -9,6 +9,7 @@ import '../../../core/constants/keys.dart';
 import '../../../core/remember_me_storage.dart';
 import '../../../core/rider_launch_route.dart';
 import '../../../providers/auth_provider.dart';
+import '../../components/brand_logo.dart';
 import '../../components/custom_text_field.dart';
 import '../../components/google_sign_in_button.dart';
 import '../../components/primary_button.dart';
@@ -133,7 +134,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
+              const Center(child: BrandLogo(size: 96)),
+              const SizedBox(height: 28),
               Text(
                 'Magandang araw',
                 style: AppTextStyles.label.copyWith(color: AppColors.ecoGreenLight),

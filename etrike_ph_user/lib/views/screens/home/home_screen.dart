@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../../../core/constants/map_regions.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/location_permission.dart';
 import '../../../core/constants/app_text_styles.dart';
@@ -13,11 +12,14 @@ import '../../../core/eco/eco_local_store.dart';
 import '../../../core/trip_live_activity_service.dart';
 import '../../../core/eco/eco_models.dart';
 import '../../../models/driver_model.dart';
+import '../../../models/place_model.dart';
 import '../../../models/trip_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/driver_provider.dart';
 import '../../../providers/maintenance_provider.dart';
+import '../../../providers/place_provider.dart';
 import '../../../providers/trip_provider.dart';
+import '../../components/service_area_chip.dart';
 import '../maintenance/maintenance_screen.dart';
 import 'booking_bottom_sheet.dart';
 import 'home_map_widget.dart';
@@ -81,15 +83,16 @@ class HomeUi {
     String? error,
     String? sheetNotice,
     bool clearSheetNotice = false,
+    bool clearDropoff = false,
   }) {
     return HomeUi(
       pickup: pickup ?? this.pickup,
       pickupAddress: pickupAddress ?? this.pickupAddress,
-      dropoff: dropoff ?? this.dropoff,
-      dropoffAddress: dropoffAddress ?? this.dropoffAddress,
-      routePoints: routePoints ?? this.routePoints,
-      distanceKm: distanceKm ?? this.distanceKm,
-      routeDurationSeconds: routeDurationSeconds ?? this.routeDurationSeconds,
+      dropoff: clearDropoff ? null : (dropoff ?? this.dropoff),
+      dropoffAddress: clearDropoff ? '' : (dropoffAddress ?? this.dropoffAddress),
+      routePoints: clearDropoff ? const [] : (routePoints ?? this.routePoints),
+      distanceKm: clearDropoff ? 0 : (distanceKm ?? this.distanceKm),
+      routeDurationSeconds: clearDropoff ? 0 : (routeDurationSeconds ?? this.routeDurationSeconds),
       predictions: predictions ?? this.predictions,
       searchBusy: searchBusy ?? this.searchBusy,
       routeBusy: routeBusy ?? this.routeBusy,
@@ -110,7 +113,9 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  static const LatLng _defaultPickup = MapRegions.carmonaCenter;
+  PlaceModel get _area => ref.read(selectedPlaceProvider);
+
+  LatLng get _defaultPickup => _area.center;
 
   late final ValueNotifier<HomeUi> _ui;
   GoogleMapController? _mapController;
@@ -123,8 +128,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _ui = ValueNotifier(
-      const HomeUi(
-        pickup: _defaultPickup,
+      HomeUi(
+        pickup: PlaceModel.fallbackMalagasang.center,
         pickupAddress: 'Locating…',
         locatingPickup: true,
       ),
@@ -143,25 +148,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _applyDefaultPickup({String? notice}) async {
-    var address = 'Carmona, Cavite, Philippines';
+    final area = _area;
+    var address = area.label;
     try {
       final geocoded = await ref
           .read(tripRepositoryProvider)
-          .reverseGeocode(_defaultPickup)
+          .reverseGeocode(area.center)
           .timeout(const Duration(seconds: 8));
       if (geocoded.isNotEmpty) address = geocoded;
     } catch (_) {}
     _ui.value = _ui.value.copyWith(
-      pickup: _defaultPickup,
+      pickup: area.center,
       pickupAddress: address,
       locatingPickup: false,
       pickupFromDeviceGps: false,
       error: null,
       sheetNotice: notice,
     );
-    await _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(_defaultPickup, 14),
-    );
+    await _fitServiceArea(area);
     if (_ui.value.dropoff != null) {
       await _refreshRoute();
     }
@@ -178,7 +182,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (!serviceEnabled) {
         await _applyDefaultPickup(
           notice:
-              'Location is off. Using Carmona as pickup — turn on Location in Settings.',
+              'Location is off. Using ${_area.name} as pickup — turn on Location in Settings.',
         );
         return;
       }
@@ -201,6 +205,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ).timeout(const Duration(seconds: 14));
       final pickup = LatLng(pos.latitude, pos.longitude);
+      if (!_area.contains(pickup)) {
+        await _applyDefaultPickup(
+          notice:
+              'You are outside ${_area.name}. The map stays in this village — switch area if you are booking elsewhere.',
+        );
+        return;
+      }
       var address = '${pickup.latitude.toStringAsFixed(5)}, ${pickup.longitude.toStringAsFixed(5)}';
       try {
         final geocoded = await ref
@@ -217,13 +228,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         error: null,
         clearSheetNotice: true,
       );
-      await _mapController?.animateCamera(CameraUpdate.newLatLngZoom(pickup, 15));
+      await _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(pickup, _area.recommendedZoom),
+      );
       if (_ui.value.dropoff != null) {
         await _refreshRoute();
       }
     } catch (e) {
       await _applyDefaultPickup(
-        notice: 'Could not get GPS ($e). Using Carmona as pickup.',
+        notice: 'Could not get GPS ($e). Using ${_area.name} as pickup.',
       );
     }
   }
@@ -246,12 +259,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final pickup = _ui.value.pickup ?? _defaultPickup;
         final result = await ref
             .read(tripRepositoryProvider)
-            .searchPlaces(text, near: pickup)
+            .searchPlaces(
+              text,
+              near: pickup,
+              radiusMeters: _area.searchRadiusMeters,
+            )
             .timeout(const Duration(seconds: 15));
         String? notice;
         if (result.predictions.isEmpty) {
           notice =
-              'No matches nearby or nationwide. Pin the spot on the map, or try a street or landmark name.';
+              'No matches inside ${_area.name}. Pin a spot on the map, or try a street or landmark in this village.';
         }
         _ui.value = _ui.value.copyWith(
           predictions: result.predictions,
@@ -290,6 +307,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _applyPickup(LatLng location, String address) async {
+    if (!_area.contains(location)) {
+      _ui.value = _ui.value.copyWith(
+        routeBusy: false,
+        sheetNotice:
+            'Pickup must be inside ${_area.name}. Stay within the green circle or switch village.',
+      );
+      return;
+    }
     _ui.value = _ui.value.copyWith(
       pickup: location,
       pickupAddress: address,
@@ -298,7 +323,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       clearSheetNotice: true,
     );
     await _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(location, 15),
+      CameraUpdate.newLatLngZoom(location, _area.recommendedZoom),
     );
     if (_ui.value.dropoff != null) {
       await _refreshRoute();
@@ -320,6 +345,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _applyDropoff(LatLng location, String address) async {
+    if (!_area.contains(location)) {
+      _ui.value = _ui.value.copyWith(
+        routeBusy: false,
+        sheetNotice:
+            'Destination must be inside ${_area.name}. This village is the only service area on the map.',
+      );
+      return;
+    }
     final pickup = _ui.value.pickup ?? _defaultPickup;
     final directions = await ref.read(tripRepositoryProvider).fetchDirections(
           origin: pickup,
@@ -431,6 +464,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  Future<void> _fitServiceArea(PlaceModel area) async {
+    try {
+      await _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(area.center, area.recommendedZoom),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _onServiceAreaChanged(PlaceModel previous, PlaceModel next) async {
+    if (previous.slug == next.slug && previous.id != next.id) {
+      return;
+    }
+    _ui.value = _ui.value.copyWith(clearDropoff: true, clearSheetNotice: true);
+    await _initLocation();
+  }
+
   Future<void> _useMyLocationForPickup() async {
     setState(() => _searchTarget = LocationSearchTarget.pickup);
     await _initLocation();
@@ -465,11 +514,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     required double fare,
     required String vehicleTypeId,
     String? promoCode,
+    String paymentMethod = 'cash',
   }) async {
     final user = ref.read(supabaseClientProvider).auth.currentUser;
     final pickup = _ui.value.pickup;
     final dropoff = _ui.value.dropoff;
     if (user == null || pickup == null || dropoff == null) return;
+    if (!_area.contains(pickup) || !_area.contains(dropoff)) {
+      _ui.value = _ui.value.copyWith(
+        sheetNotice:
+            'Pickup and drop-off must both be inside ${_area.name}.',
+      );
+      return;
+    }
     _ui.value = _ui.value.copyWith(bookingBusy: true);
     try {
       final fareConfig = await ref.read(tripRepositoryProvider).fetchActiveFareConfig();
@@ -486,13 +543,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             dropoff: dropoff,
             fare: confirmedFare,
             distanceKm: _ui.value.distanceKm,
+            paymentMethod: paymentMethod,
+            placeId: _area.isPersisted ? _area.id : null,
           );
       await EcoLocalStore.incrementGreenRides();
       if (!mounted) return;
       _ui.value = _ui.value.copyWith(bookingBusy: false);
       await TripLiveActivityService.showSearching();
       if (!mounted) return;
-      context.push('/trip/${trip.id}');
+      if (paymentMethod == 'paymongo_qr') {
+        context.push('/trip/${trip.id}/pay');
+      } else {
+        context.push('/trip/${trip.id}');
+      }
     } catch (e) {
       final message = e.toString();
       final String sheetNotice;
@@ -527,7 +590,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.listen<AsyncValue<TripModel?>>(riderActiveTripProvider, (_, next) {
       unawaited(TripLiveActivityService.reconcileWithTrip(next.asData?.value));
     });
+    ref.listen<PlaceModel>(selectedPlaceProvider, (previous, next) {
+      if (previous == null || previous.id == next.id) return;
+      unawaited(_onServiceAreaChanged(previous, next));
+    });
 
+    final area = ref.watch(selectedPlaceProvider);
     final driversAsync = ref.watch(nearbyDriversProvider);
     final activeTrip = ref.watch(riderActiveTripProvider).asData?.value;
     final maintenanceStatus = ref.watch(appMaintenanceStatusProvider);
@@ -535,7 +603,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return ValueListenableBuilder<HomeUi>(
       valueListenable: _ui,
       builder: (context, ui, _) {
-        final pickup = ui.pickup ?? _defaultPickup;
+        final pickup = ui.pickup ?? area.center;
         final markers = <Marker>{};
         if (ui.pickup != null) {
           markers.add(
@@ -589,6 +657,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           );
         }
+        final circles = <Circle>{
+          Circle(
+            circleId: const CircleId('service-area'),
+            center: area.center,
+            radius: area.radiusKm * 1000,
+            fillColor: AppColors.ecoGreen.withValues(alpha: 0.12),
+            strokeColor: AppColors.ecoGreen.withValues(alpha: 0.75),
+            strokeWidth: 2,
+          ),
+        };
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -596,10 +674,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             children: [
               Positioned.fill(
                 child: HomeMapWidget(
+                  key: ValueKey(area.id),
                   initialTarget: pickup,
                   markers: markers,
                   polylines: polylines,
-                  onMapCreated: (c) => _mapController = c,
+                  circles: circles,
+                  cameraTargetBounds: area.cameraBounds,
+                  minZoom: area.minZoom,
+                  initialZoom: area.recommendedZoom,
+                  onMapCreated: (c) {
+                    _mapController = c;
+                    unawaited(_fitServiceArea(area));
+                  },
                   onMapTap: _pinModeActive ? _onMapTap : null,
                 ),
               ),
@@ -676,7 +762,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           icon: Icons.settings_outlined,
                           onTap: () => context.push('/settings'),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 8),
+                        const Expanded(child: ServiceAreaChip(compact: true)),
+                        const SizedBox(width: 8),
                         _CircleIconButton(
                           icon: Icons.person_outline,
                           onTap: () => context.push('/profile'),
@@ -740,6 +828,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     searchTarget: _searchTarget,
                     onSearchTargetChanged: _onSearchTargetChanged,
                     onUseMyLocationForPickup: _useMyLocationForPickup,
+                    serviceAreaLabel: area.name,
                     pickupLabel: ui.locatingPickup
                         ? 'Locating…'
                         : (ui.pickupAddress.isEmpty ? 'Current location' : ui.pickupAddress),
@@ -758,10 +847,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     bookingBusy: ui.bookingBusy,
                     onSearchChanged: _onSearchChanged,
                     onPickPrediction: _onPickPrediction,
-                    onBook: ({required fare, required vehicleTypeId, promoCode}) => _bookTrip(
+                    onBook: ({
+                      required fare,
+                      required vehicleTypeId,
+                      promoCode,
+                      paymentMethod = 'cash',
+                    }) =>
+                        _bookTrip(
                       fare: fare,
                       vehicleTypeId: vehicleTypeId,
                       promoCode: promoCode,
+                      paymentMethod: paymentMethod,
                     ),
                   ),
                 ),

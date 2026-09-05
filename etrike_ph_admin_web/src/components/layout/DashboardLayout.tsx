@@ -97,7 +97,7 @@ function SidebarBrand({
           </button>
         ) : null}
       </div>
-      <p className="text-xs text-black/45">Carmona pilot</p>
+      <p className="text-xs text-black/45">Malagasang 1-B, Imus</p>
     </div>
   )
 }

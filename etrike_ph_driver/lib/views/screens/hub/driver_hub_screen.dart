@@ -9,8 +9,10 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/hr_provider.dart';
 import '../../../providers/onboarding_provider.dart';
+import '../../../providers/place_provider.dart';
 import '../../components/driver_ui.dart';
 import '../../components/primary_button.dart';
+import '../../components/service_village_picker.dart';
 
 class DriverHubScreen extends ConsumerWidget {
   const DriverHubScreen({super.key});
@@ -20,6 +22,7 @@ class DriverHubScreen extends ConsumerWidget {
     final profileAsync = ref.watch(driverProfileProvider);
     final statsAsync = ref.watch(driverStatsProvider);
     final openAttAsync = ref.watch(openAttendanceProvider);
+    final places = ref.watch(activePlacesProvider).asData?.value ?? const [];
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -29,6 +32,13 @@ class DriverHubScreen extends ConsumerWidget {
         data: (driver) {
           if (driver == null) {
             return const Center(child: Text('No driver profile'));
+          }
+          String villageLabel = driver.station;
+          for (final place in places) {
+            if (place.id == driver.placeId) {
+              villageLabel = place.label;
+              break;
+            }
           }
           return CustomScrollView(
             slivers: [
@@ -76,7 +86,7 @@ class DriverHubScreen extends ConsumerWidget {
                               Text(driver.email, style: AppTextStyles.bodySecondary),
                               const SizedBox(height: 4),
                               Text(
-                                '${driver.station} · ${driver.shiftSchedule}',
+                                '$villageLabel · ${driver.shiftSchedule}',
                                 style: AppTextStyles.bodySecondary.copyWith(fontSize: 12),
                               ),
                               const SizedBox(height: 8),
@@ -199,9 +209,18 @@ class DriverHubScreen extends ConsumerWidget {
                   title: 'Workday',
                   children: [
                     DriverSettingsTile(
+                      icon: Icons.location_city_outlined,
+                      title: 'Service village',
+                      subtitle: driver.placeId == null
+                          ? 'Pick where you and your e-trike take bookings'
+                          : villageLabel,
+                      onTap: () => showServiceVillagePicker(context, ref),
+                      showDivider: true,
+                    ),
+                    DriverSettingsTile(
                       icon: Icons.login_rounded,
                       title: 'Time in / Time out',
-                      subtitle: 'Clock your shift for HR records',
+                      subtitle: 'Required before going Online',
                       onTap: () => context.push('/attendance'),
                       showDivider: true,
                     ),

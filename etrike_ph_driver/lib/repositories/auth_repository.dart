@@ -259,6 +259,23 @@ class AuthRepository {
     } catch (_) {}
   }
 
+  Future<void> updateOwnServicePlace(String placeId) async {
+    final user = currentUser;
+    if (user == null) throw StateError('Not signed in');
+    try {
+      await _client.rpc('set_own_service_place', params: {'p_place_id': placeId});
+    } catch (_) {
+      await _client.from('drivers').update({'place_id': placeId}).eq('id', user.id);
+    }
+    await _audit.log(
+      action: 'driver.set_service_place',
+      entityType: 'drivers',
+      entityId: user.id,
+      summary: 'Driver set service village',
+      metadata: {'place_id': placeId},
+    );
+  }
+
   Future<void> updateDriverProfile({
     required String fullName,
     String? phone,

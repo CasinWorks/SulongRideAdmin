@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/rider_launch_route.dart';
+import '../../components/brand_logo.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -76,6 +77,8 @@ class _SplashScreenState extends State<SplashScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                const BrandLogo(size: 128),
+                const SizedBox(height: 24),
                 Text(
                   AppStrings.brandName,
                   style: AppTextStyles.headingLg.copyWith(color: AppColors.ecoCream),

@@ -32,6 +32,7 @@ Run in **SQL Editor** for each Supabase project you test against. Order matters 
 | 10 | `fix_operator_rbac.sql` | Admin operator access |
 | 11 | `fix_operator_rbac_viewer.sql` | Viewer read-only RLS |
 | 12 | `fix_operator_roles_hr_dispatcher.sql` | HR + dispatcher roles |
+| 13 | `fix_places_dispatch_payments.sql` | Village places, auto-assign, PayMongo QR columns |
 
 Optional: `fix_driver_documents_or_cr_optional.sql` (documentation only if OR/CR already optional in app).
 

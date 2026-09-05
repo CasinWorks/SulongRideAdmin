@@ -23,6 +23,9 @@ final driverStatsProvider = FutureProvider<DriverStats>((ref) async {
   return ref.watch(hrRepositoryProvider).fetchDriverStats();
 });
 
+/// Set when the app auto times out a 24-hour shift so Home can show a prompt.
+final driverForcedOfflineReasonProvider = StateProvider<String?>((ref) => null);
+
 final openAttendanceProvider = FutureProvider<AttendanceRecord?>((ref) async {
   ref.watch(authUserIdProvider);
   return ref.watch(hrRepositoryProvider).fetchOpenAttendance();

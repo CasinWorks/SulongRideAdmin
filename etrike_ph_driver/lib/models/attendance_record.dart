@@ -15,12 +15,19 @@ class AttendanceRecord {
   final String? notes;
   final DateTime createdAt;
 
+  static const maxOpenDuration = Duration(hours: 24);
+
   bool get isOpen => clockOut == null;
 
   Duration get duration {
     final end = clockOut ?? DateTime.now();
     return end.difference(clockIn);
   }
+
+  bool get isStale =>
+      isOpen && DateTime.now().toUtc().difference(clockIn.toUtc()) >= maxOpenDuration;
+
+  DateTime get autoTimeoutAt => clockIn.add(maxOpenDuration);
 
   static AttendanceRecord? tryFromJson(Map<String, dynamic> json) {
     final id = json['id']?.toString();

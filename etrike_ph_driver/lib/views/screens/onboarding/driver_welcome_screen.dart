@@ -44,11 +44,11 @@ class _DriverWelcomeScreenState extends ConsumerState<DriverWelcomeScreen> {
       icon: Icons.schedule_rounded,
       title: 'Time in & time out',
       body:
-          'Company drivers must clock in at the start of shift and clock out when done. This is separate from going Online for trips — both matter for HR records.',
+          'Company drivers must time in at the start of a scheduled shift before going Online. Open shifts auto time out after 24 hours.',
       bullets: [
-        'Time In when you start your shift',
-        'Go Online to receive ride requests',
-        'Time Out when your shift ends',
+        'Time In when your scheduled shift starts',
+        'Then go Online to receive ride requests',
+        'Time Out when you finish — or the app times you out after 24 hours',
         'Request VL / SL for planned or sick leave',
       ],
     ),

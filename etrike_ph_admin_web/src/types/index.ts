@@ -10,6 +10,7 @@ export type OperatorRow = {
   approved_by: string | null
   approved_at: string | null
   created_at: string | null
+  place_id: string | null
 }
 
 export type OperatorInviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired'
@@ -54,6 +55,7 @@ export type DriverRow = {
   shift_end: string
   emergency_contact: string
   start_date: string | null
+  place_id: string | null
 }
 
 export type FareConfig = {
@@ -92,6 +94,21 @@ export type VehicleTypeRow = {
   eta_minutes: number
   sort_order: number
   is_active: boolean
+  updated_at: string | null
+  place_id: string | null
+}
+
+export type PlaceRow = {
+  id: string
+  slug: string
+  name: string
+  display_name: string | null
+  notes: string | null
+  center_lat: number
+  center_lng: number
+  radius_km: number
+  is_active: boolean
+  created_at: string | null
   updated_at: string | null
 }
 

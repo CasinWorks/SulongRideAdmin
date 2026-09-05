@@ -293,7 +293,30 @@ class _DriverTripOverlayState extends ConsumerState<DriverTripOverlay> {
                     onPressed: _actionBusy ? null : _markArrivedAtPickup,
                   ),
                 if (displayTrip.status == 'ongoing') ...[
-                  if (_cashPhase == _CashPaymentPhase.idle)
+                  if (displayTrip.isPaid)
+                    PrimaryButton(
+                      label: 'Complete trip — QR paid',
+                      isLoading: _actionBusy,
+                      onPressed: _actionBusy
+                          ? null
+                          : () async {
+                              setState(() => _actionBusy = true);
+                              try {
+                                await ref.read(tripRepositoryProvider).completeTrip(displayTrip.id);
+                                await _waitForTripStatus('completed');
+                                unawaited(DriverTripLiveActivityService.end());
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('$e')),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) setState(() => _actionBusy = false);
+                              }
+                            },
+                    )
+                  else if (_cashPhase == _CashPaymentPhase.idle)
                     PrimaryButton(
                       label: 'End trip — collect payment',
                       useAccent: false,

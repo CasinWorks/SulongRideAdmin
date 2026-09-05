@@ -13,14 +13,22 @@ class HomeMapWidget extends StatelessWidget {
     required this.onMapCreated,
     this.onMapTap,
     this.myLocationEnabled = true,
+    this.circles = const {},
+    this.cameraTargetBounds,
+    this.minZoom,
+    this.initialZoom = 15,
   });
 
   final LatLng initialTarget;
   final Set<Marker> markers;
   final Set<Polyline> polylines;
+  final Set<Circle> circles;
   final void Function(GoogleMapController controller) onMapCreated;
   final void Function(LatLng position)? onMapTap;
   final bool myLocationEnabled;
+  final LatLngBounds? cameraTargetBounds;
+  final double? minZoom;
+  final double initialZoom;
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +36,10 @@ class HomeMapWidget extends StatelessWidget {
       initialTarget: initialTarget,
       markers: markers,
       polylines: polylines,
+      circles: circles,
+      cameraTargetBounds: cameraTargetBounds,
+      minZoom: minZoom,
+      initialZoom: initialZoom,
       onMapCreated: onMapCreated,
       onMapTap: onMapTap,
       myLocationEnabled: myLocationEnabled,

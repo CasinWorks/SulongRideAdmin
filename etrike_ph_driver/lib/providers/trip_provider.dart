@@ -7,6 +7,7 @@ import '../models/trip_model.dart';
 import '../repositories/trip_repository.dart';
 import 'auth_provider.dart';
 import 'driver_eligibility_provider.dart';
+import 'hr_provider.dart';
 import 'onboarding_provider.dart';
 import 'training_provider.dart';
 
@@ -16,10 +17,20 @@ final driverOnlineProvider = StateProvider<bool>((ref) => false);
 /// Last error from polling open trips while online (RLS / network).
 final requestedTripsPollErrorProvider = StateProvider<String?>((ref) => null);
 
-List<TripModel> _openRequestedTrips(List<Map<String, dynamic>> rows) {
+List<TripModel> _openRequestedTrips(
+  List<Map<String, dynamic>> rows, {
+  String? driverPlaceId,
+}) {
   return rows
+      .where((row) {
+        if (row['status'] != 'requested' || row['driver_id'] != null) {
+          return false;
+        }
+        if (driverPlaceId == null || driverPlaceId.isEmpty) return true;
+        final tripPlace = row['place_id']?.toString();
+        return tripPlace == null || tripPlace == driverPlaceId;
+      })
       .map(TripModel.fromJson)
-      .where((t) => t.status == 'requested' && t.driverId == null)
       .toList();
 }
 
@@ -79,6 +90,7 @@ final requestedTripsProvider = StreamProvider<List<TripModel>>((ref) async* {
           authRepo: ref.read(authRepositoryProvider),
           trainingRepo: ref.read(trainingRepositoryProvider),
           onboardingRepo: ref.read(onboardingRepositoryProvider),
+          hrRepo: ref.read(hrRepositoryProvider),
           driverId: uid,
         );
         if (!eligibility.canReceiveTrips) return [];
@@ -91,7 +103,11 @@ final requestedTripsProvider = StreamProvider<List<TripModel>>((ref) async* {
       } catch (_) {}
     }
     try {
-      final trips = _openRequestedTrips(await repo.fetchOpenRequestedTrips());
+      final placeId = ref.read(driverProfileProvider).asData?.value?.placeId;
+      final trips = _openRequestedTrips(
+        await repo.fetchOpenRequestedTrips(),
+        driverPlaceId: placeId,
+      );
       ref.read(requestedTripsPollErrorProvider.notifier).state = null;
       return trips;
     } catch (e) {
@@ -121,7 +137,10 @@ final requestedTripsProvider = StreamProvider<List<TripModel>>((ref) async* {
     });
   }
 
-  realtimeSub = repo.requestedTripsStream().map(_openRequestedTrips).listen(
+  realtimeSub = repo.requestedTripsStream().map((rows) {
+    final placeId = ref.read(driverProfileProvider).asData?.value?.placeId;
+    return _openRequestedTrips(rows, driverPlaceId: placeId);
+  }).listen(
         (trips) async {
           if (!ref.read(driverOnlineProvider)) return;
           final uid = ref.read(supabaseClientProvider).auth.currentUser?.id;
@@ -131,6 +150,7 @@ final requestedTripsProvider = StreamProvider<List<TripModel>>((ref) async* {
                 authRepo: ref.read(authRepositoryProvider),
                 trainingRepo: ref.read(trainingRepositoryProvider),
                 onboardingRepo: ref.read(onboardingRepositoryProvider),
+                hrRepo: ref.read(hrRepositoryProvider),
                 driverId: uid,
               );
               if (!eligibility.canReceiveTrips) return;

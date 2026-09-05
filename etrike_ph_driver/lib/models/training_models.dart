@@ -186,8 +186,8 @@ const kTrainingQuizQuestions = <TrainingQuizQuestion>[
     id: 'q5',
     prompt: 'Time In / Time Out in Driver Hub is for:',
     options: [
-      'Going online for trip requests',
-      'HR attendance records (separate from going Online)',
+      'Optional HR notes only',
+      'Required attendance — you must Time In before going Online',
       'Uploading documents',
       'Chat with riders',
     ],

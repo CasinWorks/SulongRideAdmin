@@ -4,9 +4,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/constants/keys.dart';
 import '../core/constants/map_regions.dart';
+import '../core/geo.dart';
 import '../models/trip_model.dart';
 import 'audit_repository.dart';
 import 'auth_repository.dart';
+import 'place_repository.dart';
 
 List<LatLng> decodePolyline(String encoded) {
   final List<LatLng> points = [];
@@ -104,6 +106,7 @@ class TripRepository {
     String input, {
     LatLng? near,
     required bool localBias,
+    int? radiusMeters,
   }) async {
     final params = <String, String>{
       'input': input,
@@ -111,11 +114,11 @@ class TripRepository {
       'components': 'country:ph',
     };
     if (localBias) {
-      final bias = near ?? MapRegions.carmonaCenter;
+      final bias = near ?? MapRegions.defaultServiceCenter;
       params['types'] = 'geocode';
       params['location'] = '${bias.latitude},${bias.longitude}';
-      params['radius'] = '${MapRegions.searchRadiusMeters}';
-      params['strictbounds'] = 'false';
+      params['radius'] = '${radiusMeters ?? MapRegions.searchRadiusMeters}';
+      params['strictbounds'] = 'true';
     }
     final response = await _dio.get<Map<String, dynamic>>(
       'https://maps.googleapis.com/maps/api/place/autocomplete/json',
@@ -132,26 +135,28 @@ class TripRepository {
     );
   }
 
-  /// Local Carmona/Cavite bias first, then Philippines-wide autocomplete, then geocode.
+  /// Search inside the selected village first. Does not widen nationwide.
   Future<({List<Map<String, dynamic>> predictions, bool widened})>
       searchPlaces(
     String input, {
     LatLng? near,
+    int? radiusMeters,
   }) async {
     final trimmed = input.trim();
     if (trimmed.isEmpty) {
       return (predictions: const <Map<String, dynamic>>[], widened: false);
     }
-    final local = await _autocompleteRequest(trimmed, near: near, localBias: true);
+    final local = await _autocompleteRequest(
+      trimmed,
+      near: near,
+      localBias: true,
+      radiusMeters: radiusMeters,
+    );
     if (local.isNotEmpty) {
       return (predictions: local, widened: false);
     }
-    final wide = await _autocompleteRequest(trimmed, near: near, localBias: false);
-    if (wide.isNotEmpty) {
-      return (predictions: wide, widened: true);
-    }
     final geocoded = await forwardGeocode(trimmed);
-    return (predictions: geocoded, widened: true);
+    return (predictions: geocoded, widened: false);
   }
 
   Future<List<Map<String, dynamic>>> autocompletePlaces(
@@ -290,6 +295,8 @@ class TripRepository {
     required double fare,
     double? distanceKm,
     String? distanceColumn,
+    String? placeId,
+    String paymentMethod = 'cash',
   }) {
     final row = <String, dynamic>{
       'rider_id': riderId,
@@ -301,7 +308,12 @@ class TripRepository {
       'dropoff_lng': dropoff.longitude,
       'status': 'requested',
       'fare': fare,
+      'payment_method': paymentMethod,
+      'payment_status': paymentMethod == 'paymongo_qr' ? 'pending' : 'unpaid',
     };
+    if (placeId != null) {
+      row['place_id'] = placeId;
+    }
     if (distanceKm != null && distanceColumn != null) {
       row[distanceColumn] = distanceKm;
     }
@@ -338,8 +350,38 @@ class TripRepository {
     required LatLng dropoff,
     required double fare,
     required double distanceKm,
+    String paymentMethod = 'cash',
+    String? placeId,
   }) async {
     await _auth.ensureUserRowExists();
+
+    var resolvedPlaceId = placeId;
+    if (resolvedPlaceId != null && resolvedPlaceId.startsWith('local-')) {
+      resolvedPlaceId = null;
+    }
+    if (resolvedPlaceId == null) {
+      resolvedPlaceId = (await PlaceRepository(_client).placeCovering(
+        pickup.latitude,
+        pickup.longitude,
+      ))?.id;
+    }
+
+    Future<TripModel> insertWith(Map<String, dynamic> row) async {
+      try {
+        return await _insertTripRow(row);
+      } catch (e) {
+        if (_isMissingColumnError(e, 'place_id') ||
+            _isMissingColumnError(e, 'payment_method') ||
+            _isMissingColumnError(e, 'payment_status')) {
+          final fallback = Map<String, dynamic>.from(row)
+            ..remove('place_id')
+            ..remove('payment_method')
+            ..remove('payment_status');
+          return _insertTripRow(fallback);
+        }
+        rethrow;
+      }
+    }
 
     final base = _tripInsertRow(
       riderId: riderId,
@@ -348,10 +390,13 @@ class TripRepository {
       pickup: pickup,
       dropoff: dropoff,
       fare: fare,
+      placeId: resolvedPlaceId,
+      paymentMethod: paymentMethod,
     );
 
+    TripModel trip;
     try {
-      return await _insertTripRow(
+      trip = await insertWith(
         _tripInsertRow(
           riderId: riderId,
           pickupAddress: pickupAddress,
@@ -361,12 +406,14 @@ class TripRepository {
           fare: fare,
           distanceKm: distanceKm,
           distanceColumn: 'distance_km',
+          placeId: resolvedPlaceId,
+          paymentMethod: paymentMethod,
         ),
       );
     } catch (e) {
       if (_isMissingColumnError(e, 'distance_km')) {
         try {
-          return await _insertTripRow(
+          trip = await insertWith(
             _tripInsertRow(
               riderId: riderId,
               pickupAddress: pickupAddress,
@@ -376,17 +423,111 @@ class TripRepository {
               fare: fare,
               distanceKm: distanceKm,
               distanceColumn: 'distance',
+              placeId: resolvedPlaceId,
+              paymentMethod: paymentMethod,
             ),
           );
         } catch (e2) {
           if (_isMissingColumnError(e2, 'distance')) {
-            return await _insertTripRow(base);
+            trip = await insertWith(base);
+          } else {
+            rethrow;
           }
-          rethrow;
         }
+      } else {
+        rethrow;
       }
-      rethrow;
     }
+
+    return assignTripBalanced(trip);
+  }
+
+  /// Picks one online driver in radius (fewest trips today, closest) and auto-accepts.
+  Future<TripModel> assignTripBalanced(TripModel trip) async {
+    if (trip.driverId != null || trip.status != 'requested') return trip;
+
+    try {
+      await _client.rpc('assign_trip_balanced', params: {'p_trip_id': trip.id});
+      return await fetchTrip(trip.id) ?? trip;
+    } catch (_) {
+      return _assignTripClientFallback(trip);
+    }
+  }
+
+  Future<TripModel> _assignTripClientFallback(TripModel trip) async {
+    try {
+      final drivers = await _client
+          .from('drivers')
+          .select('id, is_online, is_available, current_lat, current_lng, place_id, approval_status')
+          .eq('is_online', true)
+          .eq('is_available', true);
+      final radiusKm = 5.0;
+      final candidates = <({String id, double km, int tripsToday})>[];
+      for (final raw in drivers as List<dynamic>) {
+        final row = raw as Map<String, dynamic>;
+        final lat = (row['current_lat'] as num?)?.toDouble();
+        final lng = (row['current_lng'] as num?)?.toDouble();
+        if (lat == null || lng == null) continue;
+        if (trip.placeId != null &&
+            row['place_id'] != null &&
+            row['place_id'] != trip.placeId) {
+          continue;
+        }
+        final km = haversineKm(trip.pickupLat, trip.pickupLng, lat, lng);
+        if (km > radiusKm) continue;
+        final id = row['id'] as String;
+        var tripsToday = 0;
+        try {
+          final today = DateTime.now().toUtc();
+          final start = DateTime.utc(today.year, today.month, today.day);
+          final counted = await _client
+              .from('trips')
+              .select('id')
+              .eq('driver_id', id)
+              .eq('status', 'completed')
+              .gte('created_at', start.toIso8601String());
+          tripsToday = (counted as List).length;
+        } catch (_) {}
+        candidates.add((id: id, km: km, tripsToday: tripsToday));
+      }
+      if (candidates.isEmpty) return trip;
+      candidates.sort((a, b) {
+        final scoreA = a.km * 2 + a.tripsToday * 3;
+        final scoreB = b.km * 2 + b.tripsToday * 3;
+        return scoreA.compareTo(scoreB);
+      });
+      final chosen = candidates.first.id;
+      await _client
+          .from('trips')
+          .update({'driver_id': chosen, 'status': 'accepted'})
+          .eq('id', trip.id)
+          .eq('status', 'requested');
+      try {
+        await _client.from('drivers').update({'is_available': false}).eq('id', chosen);
+      } catch (_) {}
+      return await fetchTrip(trip.id) ?? trip;
+    } catch (_) {
+      return trip;
+    }
+  }
+
+  Future<TripModel> markPaymongoPaid(String tripId) async {
+    final ref = 'PM-QR-${tripId.substring(0, 8).toUpperCase()}';
+    try {
+      await _client.from('trips').update({
+        'payment_status': 'paid',
+        'payment_ref': ref,
+        'paid_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', tripId);
+    } catch (e) {
+      if (!_isMissingColumnError(e, 'payment_status') &&
+          !_isMissingColumnError(e, 'payment_ref') &&
+          !_isMissingColumnError(e, 'paid_at')) {
+        rethrow;
+      }
+    }
+    return await fetchTrip(tripId) ??
+        (throw StateError('Trip not found after payment.'));
   }
 
   Future<void> cancelTrip(String tripId) async {

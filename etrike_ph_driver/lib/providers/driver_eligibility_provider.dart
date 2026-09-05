@@ -2,9 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/driver_trip_eligibility.dart';
 import '../repositories/auth_repository.dart';
+import '../repositories/hr_repository.dart';
 import '../repositories/onboarding_repository.dart';
 import '../repositories/training_repository.dart';
 import 'auth_provider.dart';
+import 'hr_provider.dart';
 import 'onboarding_provider.dart';
 import 'training_provider.dart';
 
@@ -20,11 +22,13 @@ final driverTripEligibilityProvider = FutureProvider<DriverTripEligibility>((ref
   final profile = await ref.read(authRepositoryProvider).fetchDriverProfile();
   final training = await ref.read(trainingRepositoryProvider).fetchTraining(uid);
   final onboarding = await ref.read(onboardingRepositoryProvider).fetchBundle();
+  final openAttendance = await ref.read(hrRepositoryProvider).fetchOpenAttendance();
 
   return evaluateDriverTripEligibility(
     profile: profile,
     training: training,
     onboarding: onboarding,
+    openAttendance: openAttendance,
   );
 });
 
@@ -38,14 +42,17 @@ Future<DriverTripEligibility> fetchDriverTripEligibility({
   required AuthRepository authRepo,
   required TrainingRepository trainingRepo,
   required OnboardingRepository onboardingRepo,
+  required HrRepository hrRepo,
   required String driverId,
 }) async {
   final profile = await authRepo.fetchDriverProfile();
   final training = await trainingRepo.fetchTraining(driverId);
   final onboarding = await onboardingRepo.fetchBundle();
+  final openAttendance = await hrRepo.fetchOpenAttendance();
   return evaluateDriverTripEligibility(
     profile: profile,
     training: training,
     onboarding: onboarding,
+    openAttendance: openAttendance,
   );
 }

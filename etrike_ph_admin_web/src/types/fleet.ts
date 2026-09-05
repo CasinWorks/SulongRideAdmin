@@ -25,6 +25,7 @@ export type FleetVehicle = {
   assigned_at: string | null
   last_maintenance_at: string | null
   next_maintenance_due: string | null
+  place_id: string | null
   created_at: string
   updated_at: string
 }
@@ -74,6 +75,7 @@ export type VehicleFormInput = {
   status?: VehicleStatus
   notes?: string
   next_maintenance_due?: string | null
+  place_id?: string | null
 }
 
 export type AssignVehicleInput = {

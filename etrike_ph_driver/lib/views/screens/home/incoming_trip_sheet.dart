@@ -6,6 +6,7 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../models/trip_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/driver_eligibility_provider.dart';
+import '../../../providers/hr_provider.dart';
 import '../../../providers/onboarding_provider.dart';
 import '../../../providers/training_provider.dart';
 import '../../../providers/trip_provider.dart';
@@ -53,6 +54,7 @@ class _IncomingTripSheetBodyState extends ConsumerState<_IncomingTripSheetBody> 
         authRepo: ref.read(authRepositoryProvider),
         trainingRepo: ref.read(trainingRepositoryProvider),
         onboardingRepo: ref.read(onboardingRepositoryProvider),
+        hrRepo: ref.read(hrRepositoryProvider),
         driverId: uid,
       );
       if (!eligibility.canReceiveTrips) {
@@ -106,7 +108,7 @@ class _IncomingTripSheetBodyState extends ConsumerState<_IncomingTripSheetBody> 
                 ),
               ),
               const SizedBox(height: 16),
-              Text('New trip request', style: AppTextStyles.headingSm),
+              Text('Trip assigned', style: AppTextStyles.headingSm),
               const SizedBox(height: 12),
               Text('Pickup', style: AppTextStyles.label),
               Text(widget.trip.pickupAddress, style: AppTextStyles.body),
@@ -120,26 +122,14 @@ class _IncomingTripSheetBodyState extends ConsumerState<_IncomingTripSheetBody> 
                 style: AppTextStyles.headingSm.copyWith(color: AppColors.accent),
               ),
               const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: PrimaryButton(
-                      label: 'Decline',
-                      useAccent: false,
-                      onPressed: busy ? null : () => Navigator.of(context).pop(false),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: PrimaryButton(
-                      label: 'Accept',
-                      isLoading: busy,
-                      onPressed: busy ? null : () {
+              PrimaryButton(
+                label: 'Open trip',
+                isLoading: busy,
+                onPressed: busy
+                    ? null
+                    : () {
                         _accept();
                       },
-                    ),
-                  ),
-                ],
               ),
               SizedBox(height: MediaQuery.paddingOf(context).bottom + 8),
             ],

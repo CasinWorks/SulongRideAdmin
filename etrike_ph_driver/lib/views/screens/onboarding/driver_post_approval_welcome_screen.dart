@@ -38,10 +38,10 @@ class _DriverPostApprovalWelcomeScreenState
       icon: Icons.map_outlined,
       title: 'Home map & going Online',
       body:
-          'The Home screen is your command center. When you\'re ready to accept rides, toggle Online.',
+          'The Home screen is your command center. Time in for your shift first, then toggle Online to accept rides.',
       bullets: [
         'Allow location while using the app — required when Online',
-        'Online = visible to riders and eligible for trip requests',
+        'You can only go Online during your scheduled shift after Time in',
         'Go Offline when you\'re on break or ending your shift',
         'Open Driver Hub from the top bar for profile and tools',
       ],
@@ -62,7 +62,7 @@ class _DriverPostApprovalWelcomeScreenState
       icon: Icons.schedule_rounded,
       title: 'Time in, time out & leave',
       body:
-          'HR attendance is separate from going Online. Clock in at the start of your company shift.',
+          'Time in at the start of your company shift. You cannot go Online until you clock in, and an open shift auto times out after 24 hours.',
       bullets: [
         'Time In / Time Out under Driver Hub → Workday',
         'Request Vacation Leave (VL) or Sick Leave (SL) in advance',
@@ -87,8 +87,8 @@ class _DriverPostApprovalWelcomeScreenState
       body:
           'Time In for your shift, go Online on the map, and accept your first booking. Mabuhay and drive safe!',
       bullets: [
-        'Home → toggle Online',
         'Hub → Time in when your shift starts',
+        'Home → toggle Online',
         'Replay this tour anytime in Settings',
       ],
     ),

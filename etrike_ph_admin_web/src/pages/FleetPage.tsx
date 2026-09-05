@@ -21,6 +21,8 @@ import {
 import { adminInputCls } from '../components/ui/AdminUi'
 import { ConfirmPermanentDeleteModal } from '../components/ui/ConfirmPermanentDeleteModal'
 import { useAuth } from '../hooks/useAuth'
+import { listPlaces } from '../services/places'
+import type { PlaceRow } from '../types'
 
 const emptyForm: VehicleFormInput = {
   unit_number: '',
@@ -30,11 +32,13 @@ const emptyForm: VehicleFormInput = {
   boundary_fee: 350,
   status: 'available',
   notes: '',
+  place_id: null,
 }
 
 export function FleetPage() {
-  const { isAdmin, canWriteFleet } = useAuth()
+  const { isAdmin, canWriteFleet, isSuperAdmin, operator } = useAuth()
   const [vehicles, setVehicles] = useState<FleetVehicleWithDriver[]>([])
+  const [places, setPlaces] = useState<PlaceRow[]>([])
   const [statusFilter, setStatusFilter] = useState<VehicleStatus | 'all'>('all')
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -48,8 +52,15 @@ export function FleetPage() {
 
   function load() {
     setLoading(true)
-    listFleetVehicles(statusFilter === 'all' ? undefined : statusFilter)
-      .then(setVehicles)
+    const scopedPlace = isSuperAdmin ? undefined : operator?.place_id
+    Promise.all([
+      listFleetVehicles(statusFilter === 'all' ? undefined : statusFilter, scopedPlace),
+      listPlaces().catch(() => [] as PlaceRow[]),
+    ])
+      .then(([rows, placeRows]) => {
+        setVehicles(rows)
+        setPlaces(placeRows.filter((p) => p.is_active || p.id === operator?.place_id))
+      })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load fleet'))
       .finally(() => setLoading(false))
   }
@@ -71,12 +82,20 @@ export function FleetPage() {
     )
   }, [vehicles, query])
 
+  function placeName(placeId: string | null) {
+    if (!placeId) return 'Unassigned'
+    return places.find((p) => p.id === placeId)?.name ?? 'Village'
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError(null)
     try {
-      await createVehicle(form)
+      await createVehicle({
+        ...form,
+        place_id: form.place_id || operator?.place_id || null,
+      })
       setForm(emptyForm)
       setShowAdd(false)
       load()
@@ -124,8 +143,8 @@ export function FleetPage() {
         <div>
           <h2 className="text-2xl font-semibold">E-trike fleet</h2>
           <p className="mt-1 text-sm text-black/55">
-            Company-owned units — add, assign to drivers, and track maintenance. Drivers do not
-            register their own plate numbers.
+            Company-owned units — assign each e-trike to a village, then to a driver. Drivers can
+            also set their own service village in the driver app.
           </p>
         </div>
         {canWriteFleet ? (
@@ -194,6 +213,19 @@ export function FleetPage() {
               />
             </label>
             <label className="block">
+              <span className="text-sm font-medium text-black/70">Service village</span>
+              <select
+                className={adminInputCls}
+                value={form.place_id ?? operator?.place_id ?? ''}
+                onChange={(e) => setForm({ ...form, place_id: e.target.value || null })}
+              >
+                <option value="">Unassigned</option>
+                {places.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
               <span className="text-sm font-medium text-black/70">Daily boundary fee (₱)</span>
               <input
                 type="number"
@@ -240,6 +272,7 @@ export function FleetPage() {
                 <th className="pb-3 pr-4 font-medium">Unit</th>
                 <th className="pb-3 pr-4 font-medium">Plate</th>
                 <th className="pb-3 pr-4 font-medium">Model</th>
+                <th className="pb-3 pr-4 font-medium">Village</th>
                 <th className="pb-3 pr-4 font-medium">Status</th>
                 <th className="pb-3 pr-4 font-medium">Driver</th>
                 <th className="pb-3 pr-4 font-medium">Boundary</th>
@@ -256,6 +289,7 @@ export function FleetPage() {
                   </td>
                   <td className="py-3 pr-4">{v.plate_number}</td>
                   <td className="py-3 pr-4">{v.model ?? '—'}</td>
+                  <td className="py-3 pr-4">{placeName(v.place_id)}</td>
                   <td className="py-3 pr-4">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-semibold ${vehicleStatusClass(v.status)}`}
