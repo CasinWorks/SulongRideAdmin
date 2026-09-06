@@ -17,6 +17,7 @@ import '../../../components/primary_button.dart';
 import '../../../components/slide_to_confirm.dart';
 import 'trip_dynamic_island_bar.dart';
 import 'trip_status_animations.dart';
+import 'customer_details_card.dart';
 
 class DriverTripOverlay extends ConsumerStatefulWidget {
   const DriverTripOverlay({
@@ -131,11 +132,13 @@ class _DriverTripOverlayState extends ConsumerState<DriverTripOverlay> {
     }
   }
 
-  _StatusCopy _statusCopy() {
+  _StatusCopy _statusCopy({String? passengerName}) {
     switch (widget.trip.status) {
       case 'accepted':
         return _StatusCopy(
-          title: 'Head to pickup',
+          title: passengerName == null
+              ? 'Head to pickup'
+              : 'Pick up $passengerName',
           subtitle: widget.trip.pickupAddress,
           phase: TripVisualPhase.assigned,
         );
@@ -177,9 +180,11 @@ class _DriverTripOverlayState extends ConsumerState<DriverTripOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    final status = _statusCopy();
     final topPad = MediaQuery.paddingOf(context).top;
     final displayTrip = widget.trip;
+    final riderContact =
+        ref.watch(tripRiderContactProvider(displayTrip.id)).asData?.value;
+    final status = _statusCopy(passengerName: riderContact?.fullName);
 
     return Stack(
       children: [
@@ -222,6 +227,15 @@ class _DriverTripOverlayState extends ConsumerState<DriverTripOverlay> {
               children: [
                 TripProgressRail(status: displayTrip.status),
                 const SizedBox(height: 16),
+                if (riderContact != null) ...[
+                  CustomerDetailsCard(
+                    contact: riderContact,
+                    onChat: tripChatIsOpen(displayTrip.status)
+                        ? () => context.push('/chat/${displayTrip.id}')
+                        : null,
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 Row(
                   children: [
                     Expanded(

@@ -11,6 +11,7 @@ import '../../../providers/onboarding_provider.dart';
 import '../../../providers/training_provider.dart';
 import '../../../providers/trip_provider.dart';
 import '../../components/primary_button.dart';
+import '../trip/widgets/customer_details_card.dart';
 
 Future<bool?> showIncomingTripSheet({
   required BuildContext context,
@@ -110,6 +111,25 @@ class _IncomingTripSheetBodyState extends ConsumerState<_IncomingTripSheetBody> 
               const SizedBox(height: 16),
               Text('Trip assigned', style: AppTextStyles.headingSm),
               const SizedBox(height: 12),
+              ref.watch(tripRiderContactProvider(widget.trip.id)).when(
+                    data: (contact) => contact == null
+                        ? const SizedBox.shrink()
+                        : Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: CustomerDetailsCard(
+                              contact: contact,
+                              compact: true,
+                            ),
+                          ),
+                    loading: () => const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: LinearProgressIndicator(
+                        minHeight: 2,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                    error: (err, stack) => const SizedBox.shrink(),
+                  ),
               Text('Pickup', style: AppTextStyles.label),
               Text(widget.trip.pickupAddress, style: AppTextStyles.body),
               const SizedBox(height: 8),

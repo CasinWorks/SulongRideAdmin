@@ -80,10 +80,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         }
 
         final chatOpen = tripChatIsOpen(trip.status);
+        final riderName = ref
+            .watch(tripRiderContactProvider(widget.tripId))
+            .asData
+            ?.value
+            ?.fullName;
 
         return Scaffold(
           appBar: AppBar(
-            title: Text('Chat with rider', style: AppTextStyles.headingSm),
+            title: Text(
+              riderName == null ? 'Chat with rider' : 'Chat with $riderName',
+              style: AppTextStyles.headingSm,
+            ),
             backgroundColor: AppColors.surface,
             foregroundColor: AppColors.textPrimary,
             elevation: 0,

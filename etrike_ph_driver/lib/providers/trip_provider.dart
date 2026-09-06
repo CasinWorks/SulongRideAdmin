@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/rider_contact.dart';
 import '../models/trip_model.dart';
 import '../repositories/trip_repository.dart';
 import 'auth_provider.dart';
@@ -200,6 +201,12 @@ String formatPeso(double value) {
 }
 
 final lastIncomingTripPingProvider = StateProvider<String?>((ref) => null);
+
+final tripRiderContactProvider =
+    FutureProvider.family<RiderContact?, String>((ref, tripId) async {
+  if (tripId.isEmpty) return null;
+  return ref.watch(tripRepositoryProvider).fetchTripRiderContact(tripId);
+});
 
 /// Trip IDs the driver declined this session — do not show again until app restart.
 final declinedIncomingTripIdsProvider = StateProvider<Set<String>>((ref) => {});

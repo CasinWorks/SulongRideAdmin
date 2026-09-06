@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/rider_contact.dart';
 import '../models/trip_model.dart';
 import '../utils/trip_rating_enrichment.dart';
 import 'audit_repository.dart';
@@ -167,6 +168,27 @@ class TripRepository {
       return TripModel.fromJson(row);
     } catch (e) {
       rethrow;
+    }
+  }
+
+  /// Name / phone / photo for the passenger on this trip. Requires
+  /// supabase/fix_trip_rider_contact.sql.
+  Future<RiderContact?> fetchTripRiderContact(String tripId) async {
+    try {
+      final raw = await _client.rpc(
+        'get_trip_rider_contact',
+        params: {'p_trip_id': tripId},
+      );
+      Map<String, dynamic>? row;
+      if (raw is List && raw.isNotEmpty && raw.first is Map) {
+        row = Map<String, dynamic>.from(raw.first as Map);
+      } else if (raw is Map) {
+        row = Map<String, dynamic>.from(raw);
+      }
+      if (row == null) return null;
+      return RiderContact.fromJson(row);
+    } catch (_) {
+      return null;
     }
   }
 
